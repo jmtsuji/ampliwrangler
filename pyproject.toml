@@ -24,7 +24,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-qiime2helpers = "ampliwrangler.ampliwrangler:main"
+ampliwrangler = "ampliwrangler.ampliwrangler:main"
 
 [tool.setuptools]
 include-package-data = true

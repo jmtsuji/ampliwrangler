@@ -44,7 +44,6 @@ elif [[ $1 = "-h" ]] || [[ $1 = "--help" ]]; then
 
   # Help statement
   printf "${SCRIPT_NAME}: run end-to-end test for ampliwrangler tabulate\n"
-  printf "Copyright Jackson M. Tsuji, 2025\n\n"
   printf "Usage: ${SCRIPT_NAME} test_dir\n\n"
   printf "Positional arguments (required):\n"
   printf "   test_dir: path to the test directory containing the 'inputs' and 'outputs_expected' test folders\n\n"
@@ -90,6 +89,7 @@ ampliwrangler tabulate \
   -s "${input_dir}/representative_seqs.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
   -o "${output_dir}/${test_ID}.tsv" \
+  -v \
   > "${output_dir}/${test_ID}.log" 2>&1
 # TODO - print an error message if this fails
 
@@ -109,6 +109,7 @@ ampliwrangler tabulate \
   -o "${output_dir}/${test_ID}.tsv" \
   -N "#OTU ID" \
   -R \
+  -v \
   > "${output_dir}/${test_ID}.log" 2>&1
 # TODO - print an error message if this fails
 
@@ -125,6 +126,7 @@ ampliwrangler tabulate \
   -f "${input_dir}/feature_table.tsv" \
   -N "#OTU ID" \
   -R \
+  -v \
   > "${output_dir}/${test_ID}.tsv" \
   2> "${output_dir}/${test_ID}.log"
 # TODO - print an error message if this fails
@@ -144,6 +146,27 @@ ampliwrangler tabulate \
   -t "${input_dir}/taxonomy.tsv" \
   -o "${output_dir}/${test_ID}.tsv" \
   -P \
+  -u \
+  -v \
+  > "${output_dir}/${test_ID}.log" 2>&1
+# TODO - print an error message if this fails
+
+# Generate MD5 hash on expected output
+cat "${output_dir}/${test_ID}.tsv" | md5sum > "${output_dir}/${test_ID}.tsv.md5"
+
+# Compare
+check_md5s "${test_ID}"
+
+## Test 5
+test_ID="05_normalize"
+echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
+ampliwrangler tabulate \
+  -f "${input_dir}/feature_table.tsv" \
+  -s "${input_dir}/representative_seqs.fasta" \
+  -t "${input_dir}/taxonomy.tsv" \
+  -n "percent" \
+  -o "${output_dir}/${test_ID}.tsv" \
+  -v \
   > "${output_dir}/${test_ID}.log" 2>&1
 # TODO - print an error message if this fails
 

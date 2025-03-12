@@ -8,7 +8,6 @@ Copyright: Jackson M. Tsuji, 2025
 # Imports
 import sys
 import os
-import time
 import logging
 import argparse
 
@@ -18,41 +17,62 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    # Set user variables
-    input_filepath = args.input_filepath
-    output_dir = args.output_dir
+    """
+    Runs the workflow based on the provided command line arguments.
+    """
+    # Startup checks
+    if args.verbose is True:
+        logger.setLevel(logging.DEBUG)
+        logging.getLogger('ampliwrangler.split').setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+        logging.getLogger('ampliwrangler.split').setLevel(logging.INFO)
 
     # Startup messages
-    logger.info("Running " + os.path.basename(sys.argv[0]))
-    logger.info("Version: " + SCRIPT_VERSION)
-    logger.info("Input filepath: " + input_filepath)
-    logger.info("Output directory: " + output_dir)
+    logger.info(f'Running {os.path.basename(sys.argv[0])}')
+    logger.info(f'Input filepath: {args.input_filepath}')
+    logger.info(f'Output directory: {args.output_dir}')
+    logger.info(f'Run ID column name: {args.run_id_column}')
 
+    split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column)
+
+
+def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column: str = 'run_ID'):
+    """
+    Splits an input manifest file by run based on values in the run ID column.
+    Writes outputs as individual manifest files.
+
+    :param input_filepath: path to the input manifest file
+    :param output_dir: path to the directory where manifest files, split by run ID, will be written
+    :param run_id_column: name of the column in the input manifest file with run IDs
+    :return: writes output files to output_dir
+    """
     # Load manifest file
     # TODO - check for second row specifying types and add as a second header row if it exists
-    logger.info("Loading manifest file")
+    logger.info('Loading manifest file')
     manifest_table = pd.read_csv(input_filepath, sep='\t', header=0)
 
-    # Does run_ID exist?
-    if 'run_ID' not in manifest_table.columns.values.tolist():
-        logger.error("Did not find the 'run_ID' column in the provided manifest file. Cannot divide the manifest file "
-                     "by run. Exiting...")
-        sys.exit(1)
+    # Does the run ID column exist?
+    if run_id_column not in manifest_table.columns.values.tolist():
+        error = FileNotFoundError(f'Did not find the run ID column "{run_id_column}" in the provided manifest file '
+                                  f'at {input_filepath}.')
+        logger.error(error)
+        raise error
 
     # Get unique run IDs
-    unique_run_ids = set(manifest_table['run_ID'])
+    unique_run_ids = set(manifest_table[run_id_column])
 
     # Split table and write
-    for run_ID in unique_run_ids:
-        output_filename = "manifest_" + run_ID + ".tsv"
+    for run_id in unique_run_ids:
+        output_filename = f'manifest_{run_id}.tsv'
         output_filepath = os.path.join(output_dir, output_filename)
         # TODO - check if output_filepath already exists and do not write output unless --force is specified
-        logger.info("Writing run '" + run_ID + "' to file '" + output_filename + "'")
+        logger.info(f'Writing run "{run_id}" to file "{output_filename}".')
 
-        single_run_table = manifest_table[manifest_table['run_ID'] == run_ID]
+        single_run_table = manifest_table[manifest_table[run_id_column] == run_id]
         pd.DataFrame.to_csv(single_run_table, output_filepath, sep='\t', index=False)
 
-    logger.info(os.path.basename(sys.argv[0]) + ": done.")
+    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
 
 
 def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
@@ -67,25 +87,26 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     :return: An ArgumentParser object created by subparsers.add_parser()
     """
 
-    description = 'Simple script to split a QIIME2 manifest file into multiple files based on the run_ID column.'
+    description = 'Simple script to split a QIIME2 manifest file into multiple files based on the run ID column.'
 
     # Initialize within the provided subparser
-    subparser = subparsers.add_parser('count', help=description, parents=[parent_parser] if parent_parser else [])
+    subparser = subparsers.add_parser('split', help=description, parents=[parent_parser] if parent_parser else [])
 
     # Add attribute to tell main() what sub-command was called.
-    subparser.set_defaults(count=True)
+    subparser.set_defaults(split=True)
 
     file_settings = subparser.add_argument_group('Input/output file options')
-    workflow_settings = subparser.add_argument_group('Workflow options')
+    run_settings = subparser.add_argument_group('Other params')
 
-    file_settings.add_argument('-i', '--input_filepath', metavar='input', required=True,
+    file_settings.add_argument('-i', '--input_filepath', metavar='MANIFEST', required=True,
                                help='The path to the input manifest file. Must match QIIME standards AND have a column '
-                                    'named "run_ID" with a unique ID for each Illumina run')
-    file_settings.add_argument('-o', '--output_dir', metavar='output', required=True,
+                                    'with a unique ID for each sequencing run as specified in --run_id_column')
+    file_settings.add_argument('-o', '--output_dir', metavar='DIR', required=True,
                                help='The directory where output files (named "manifest_[RUN_ID].tsv") will be saved. '
                                     'Will OVERWRITE existing files.')
 
-    workflow_settings.add_argument('-v', '--verbose', required=False, action='store_true',
-                                   help='Enable for verbose logging.')
+    run_settings.add_argument('-r', '--run_id_column', metavar='STR', required=False, default='run_ID',
+                               help='Name of the column in the input manifest file that contains the unique IDs for '
+                                    'each run. [default: run_ID]')
 
     return subparser
