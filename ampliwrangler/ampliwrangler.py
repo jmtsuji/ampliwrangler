@@ -6,8 +6,11 @@ Copyright: Jackson M. Tsuji, 2025
 """
 
 import os
+import sys
 import logging
 import argparse
+
+from importlib.metadata import version
 
 from ampliwrangler.utils import check_output_file, set_up_output_directory
 from ampliwrangler.tabulate import main as tabulate_main
@@ -38,6 +41,15 @@ def main():
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
+
+    if (hasattr(args, 'version')) and (args.version is True):
+        try:
+            ampliwrangler_version = version('ampliwrangler')
+        except PackageNotFoundError:
+            ampliwrangler_version = 'unknown'
+
+        print(f'Version: {ampliwrangler_version}')
+        sys.exit(0)
 
     if (hasattr(args, 'verbose')) and (args.verbose is True):
         logger.setLevel(logging.DEBUG)
@@ -82,9 +94,16 @@ def parse_cli():
     Parses the CLI arguments.
     :return: An argparse parser object.
     """
-    cli_title = """Simple command-line utilities for enhancing QIIME2-based amplicon analyses."""
+    try:
+        ampliwrangler_version = version('ampliwrangler')
+    except PackageNotFoundError:
+        ampliwrangler_version = 'unknown'
+
+    cli_title = (f'Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses.\n'
+                 f'Copyright Jackson M. Tsuji, 2025.\n'
+                 f'Version: {ampliwrangler_version}')
     parser = argparse.ArgumentParser(description=cli_title)
-    subparsers = parser.add_subparsers(help='Available modules:')
+    parser.add_argument('-V', '--version', required=False, action='store_true', help='Print tool version and exit')
 
     # Common arguments across all modules
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -98,6 +117,7 @@ def parse_cli():
                               help='Enable verbose logging')
 
     # Declare sub-commands
+    subparsers = parser.add_subparsers(help='Available modules:')
     subparse_tabulate_cli(subparsers, parent_parser)
     subparse_count_cli(subparsers, parent_parser)
     subparse_split_cli(subparsers, parent_parser)

@@ -19,7 +19,7 @@ pip install --editable .
 ampliwrangler -h
 ```
 
-Method 2 (just install via pip) - can be done inside a conda env if desired
+Method 2 (just install via pip) - requires python 3. Can be done inside a conda env if desired.
 ```bash
 git clone https://github.com/jmtsuji/ampliwrangler.git
 cd ampliwrangler
