@@ -1,0 +1,10 @@
+name: ampliwrangler
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.12.*
+  - pandas=2.2.*
+  - biopython=1.85
+  - biom-format=2.1.*
+  - h5py=3.13.*

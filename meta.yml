@@ -1,0 +1,28 @@
+package:
+  name: ampliwrangler
+  version: "0.1.0"
+
+source:
+  path: .
+
+requirements:
+  host:
+    - python
+    - pip
+  run:
+    - pandas=2.2
+    - biopython=1.85
+    - biom-format=2.1
+    - h5py=3.13
+
+build:
+  script: pip install .
+
+test:
+  commands:
+    - ampliwrangler -h
+
+about:
+  home: https://github.com/jmtsuji/ampliwrangler
+  license: BSD 3
+  license_file: LICENSE

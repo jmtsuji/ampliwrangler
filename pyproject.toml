@@ -1,0 +1,30 @@
+[project]
+name = "ampliwrangler"
+version = "0.1.0"
+description = """Simple command-line utilities for enhancing QIIME2-based amplicon analyses."""
+authors = [
+    {name = "Jackson M. Tsuji"},
+]
+
+license = {file = "LICENSE"}
+readme = "README.md"
+
+dependencies = [
+    "biopython ~=1.85",
+    "pandas ~=2.2",
+    "biom-format ~=2.1",
+    "h5py ~=3.13"
+]
+
+[tool.setuptools.packages]
+find = {}
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+qiime2helpers = "ampliwrangler.ampliwrangler:main"
+
+[tool.setuptools]
+include-package-data = true
