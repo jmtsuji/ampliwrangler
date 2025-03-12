@@ -8,7 +8,6 @@ Copyright: Jackson M. Tsuji, 2025
 # Imports
 import sys
 import os
-import time
 import logging
 import argparse
 import re
@@ -31,47 +30,30 @@ def main(args):
     # Startup checks
     if args.verbose is True:
         logger.setLevel(logging.DEBUG)
-        logging.getLogger('ampliwrangler.utils').setLevel(logging.DEBUG)
+        logging.getLogger('ampliwrangler.tabulate').setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
-        logging.getLogger('ampliwrangler.utils').setLevel(logging.INFO)
-
-    # Set the normalization method
-    if args.percent is True:
-        # TODO: consider exposing other normalization methods to the user
-        normalization_method = 'percent'
-    else:
-        normalization_method = None
-
-    # Set sort_features to True if rename_features is True
-    if args.rename_features is True:
-        args.sort_features = True
+        logging.getLogger('ampliwrangler.tabulate').setLevel(logging.INFO)
 
     # Check that taxonomy_filepath is set if parse_taxonomy is True
     if (args.parse_taxonomy is True) and (args.taxonomy is False):
-        error = 'Although --parse_taxonomy was called, no --taxonomy_filepath was supplied.'
-        logger.error(error)
-        raise error
-
-    if (args.fill_unresolved_taxonomy is True) & (args.parse_taxonomy is False):
-        error = ValueError(f'Calling --fill_unresolved_taxonomy requires --parse_taxonomy to be called, but '
-                           f'--parse_taxonomy was not called.')
+        error = RuntimeError('Although --parse_taxonomy was called, no --taxonomy_filepath was supplied.')
         logger.error(error)
         raise error
 
     # Startup messages
     logger.info(f'Running {os.path.basename(sys.argv[0])}')
-    logger.info(f'Version: {SCRIPT_VERSION}')
     logger.debug('### SETTINGS ###')
     logger.debug(f'Feature table filepath: {args.feature_table}')
     logger.debug(f'Representative sequences filepath: {args.sequences}')
     logger.debug(f'Taxonomy filepath: {args.taxonomy}')
     logger.debug(f'Output table filepath: {args.output_feature_table}')
-    logger.debug(f'Convert to percent relative abundances?: {args.percent}')
+    logger.debug(f'Normalization method: {args.normalize}')
     logger.debug(f'Sort Feature IDs roughly by relative abundance?: {args.sort_features}')
     logger.debug(f'Rename Feature IDs sequentially?: {args.rename_features}')
     logger.debug(f'Parse Silva taxonomy into 7 ranks?: {args.parse_taxonomy}')
     logger.debug(f'Fill in blank taxonomy ranks with Unresolved_[taxon]?: {args.fill_unresolved_taxonomy}')
+    logger.debug(f'Sort table columns alphabetically?: {args.sort_columns}')
     logger.debug(f'Feature ID column name for the output table: {args.feature_id_colname}')
     logger.debug(f'Verbose logging: {args.verbose}')
     logger.debug('################')
@@ -79,11 +61,12 @@ def main(args):
     feature_table = generate_combined_feature_table(feature_table_filepath=args.feature_table,
                                                     sequence_filepath=args.sequences,
                                                     taxonomy_filepath=args.taxonomy,
-                                                    normalization_method=normalization_method,
+                                                    normalization_method=args.normalize,
                                                     sort_features=args.sort_features,
                                                     rename_features=args.rename_features,
                                                     parse_taxonomy=args.parse_taxonomy,
                                                     fill_unresolved_taxonomy=args.fill_unresolved_taxonomy,
+                                                    sort_columns=args.sort_columns,
                                                     feature_id_colname=args.feature_id_colname)
     # Write output
     if args.output_feature_table == '-':
@@ -91,10 +74,10 @@ def main(args):
         logger.info("Writing merged table to STDOUT")
         feature_table.to_csv(sys.stdout, sep='\t', index=False)
     else:
-        logger.info('Writing merged table to ' + args.output_feature_table)
+        logger.info(f'Writing merged table to {args.output_feature_table}')
         feature_table.to_csv(args.output_feature_table, sep='\t', index=False)
 
-    logger.info(os.path.basename(sys.argv[0]) + ': done.')
+    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
 
 
 def load_feature_table(feature_table_filepath: str) -> pd.DataFrame:
@@ -102,10 +85,10 @@ def load_feature_table(feature_table_filepath: str) -> pd.DataFrame:
     Read a QIIME2 feature table
 
     :param feature_table_filepath: Path to the QIIME2 FeatureTable file, TSV format
-    :return: QIIME2 FeatureTable[Frequency] artifact (pandas DataFrame)
+    :return: QIIME2 FeatureTable[Frequency] artifact as a pandas DataFrame
     """
     # Load the table
-    feature_table = pd.read_csv(feature_table_filepath, sep='\t', skiprows=1, header=0)
+    feature_table = pd.read_csv(feature_table_filepath, sep='\t', skiprows=1)
 
     # Check if the first column looks okay
     if feature_table.columns[0] != 'Feature ID':
@@ -118,9 +101,77 @@ def load_feature_table(feature_table_filepath: str) -> pd.DataFrame:
             logger.error(error)
             raise error
         else:
-            error = RuntimeError('Do not recognize the first column of the feature table as feature IDs.')
+            error = RuntimeError('The first column of the feature table should be "Feature ID" or "#OTU ID", '
+                                 'but instead, it is "{feature_table.columns[0]}"')
             logger.error(error)
             raise error
+
+    return feature_table
+
+
+def mask_metadata_columns(feature_table: pd.DataFrame, metadata_columns: list = 'default') -> pd.DataFrame:
+    """
+    Set any detected metadata (non-count / Feature ID) columns as indices
+
+    :param feature_table: QIIME2 FeatureTable[Frequency] artifact loaded as a pandas DataFrame
+    :param metadata_columns: list of column names to consider as metadata. If 'default' (string), then will
+                             search for ['Feature ID', 'Taxonomy', 'Sequence'] + TAXONOMY_RANKS
+    """
+
+    default_metadata_cols = ['Feature ID', 'Taxonomy', 'Sequence'] + TAXONOMY_RANKS
+    if metadata_columns == 'default':
+        metadata_columns = default_metadata_cols
+
+    # A copy of the feature table is made just in case pandas changes the main table object when these edits are made
+    feature_table_masked = feature_table.copy(deep=True)
+
+    mask_columns = []
+    for metadata_column in metadata_columns:
+        if metadata_column in feature_table_masked.columns:
+            mask_columns.append(metadata_column)
+
+    if len(mask_columns) > 0:
+        logger.debug(f'Masking metadata columns: {mask_columns}')
+        feature_table_masked = feature_table_masked.set_index(mask_columns)
+
+    return feature_table_masked
+
+
+def sort_feature_table_columns(feature_table: pd.DataFrame, sort_sample_columns: bool = False,
+                               metadata_columns: list = 'default') -> pd.DataFrame:
+    """
+    Sort order of columns of feature table
+
+    :param feature_table: QIIME2 FeatureTable[Frequency] artifact loaded as a pandas DataFrame
+    :param sort_sample_columns: boolean of whether to sort sample columns alphabetically or leave in their current order
+    :param metadata_columns: list of column names to consider as metadata. If 'default' (string), then will
+                             search for ['Taxonomy'] + TAXONOMY_RANKS + ['Sequence']
+    """
+    default_metadata_cols = ['Taxonomy'] + TAXONOMY_RANKS + ['Sequence']
+    if metadata_columns == 'default':
+        metadata_columns = default_metadata_cols
+
+    available_metadata_columns = []
+    sample_columns = []
+    for feature_table_column in feature_table.columns:
+        if feature_table_column in metadata_columns:
+            available_metadata_columns.append(feature_table_column)
+        else:
+            # TODO - don't hard-code Feature ID but find a way to deal with this more programmatically
+            if feature_table_column != 'Feature ID':
+                sample_columns.append(feature_table_column)
+
+    # Make the above into pandas Series and sort
+    metadata_columns = pd.Series(metadata_columns)
+    available_metadata_columns_sorted = metadata_columns[metadata_columns.isin(available_metadata_columns)]
+    sample_columns = pd.Series(sample_columns)
+    if sort_sample_columns:
+        logger.debug('Sorting sample column names alphabetically')
+        sample_columns = sample_columns.sort_values()
+
+    column_order = ['Feature ID'] + sample_columns.to_list() + available_metadata_columns_sorted.to_list()
+    logger.debug(f'Sorting columns in final order: {column_order}')
+    feature_table = feature_table[column_order]
 
     return feature_table
 
@@ -140,16 +191,8 @@ def normalize_feature_table(feature_table: pd.DataFrame, normalization_method='p
         logger.error(error)
         raise error
 
-    # TODO: make a more generic way to deal with non-sample columns, given that other functions have similar code
-    # TODO: consider masking these columns and then doing normalization, followed by unmasking.
-    if any(feature_table.columns.isin(['Taxonomy', 'Sequence'] + TAXONOMY_RANKS)):
-        error = RuntimeError('At least one of the "Taxonomy" or "Sequence" column names (or a taxonomy rank column '
-                             'name) is present in the table. Will not proceed with normalization.')
-        logger.error(error)
-        raise error
-
-    logger.debug(f"Normalizing feature table using method: {normalization_method}")
-    feature_table_normalized = feature_table.set_index('Feature ID')
+    logger.debug(f'Normalizing feature table using method: {normalization_method}')
+    feature_table_normalized = mask_metadata_columns(feature_table)
     total_per_sample = feature_table_normalized.sum(axis=0)
 
     # Any samples with zero total count cannot be normalized properly, so they must be removed
@@ -159,8 +202,8 @@ def normalize_feature_table(feature_table: pd.DataFrame, normalization_method='p
             zero_count_sample_names.append(sample_name)
 
     if len(zero_count_sample_names) > 0:
-        logger.debug(f'Removing {len(zero_count_sample_names)} samples during normalization that had zero counts: '
-                     f'{", ".join(zero_count_sample_names)}')
+        logger.info(f'Removing {len(zero_count_sample_names)} samples during normalization that had zero counts: '
+                    f'{", ".join(zero_count_sample_names)}')
         feature_table_normalized = feature_table_normalized.drop(columns=zero_count_sample_names)
         total_per_sample = total_per_sample.drop(labels=zero_count_sample_names)
 
@@ -251,22 +294,14 @@ def sort_feature_table(feature_table: pd.DataFrame) -> pd.DataFrame:
         else:
             sort_column_id_checked = True
 
-    # Remove non-sample columns other than Feature ID before sorting
-    # A copy of the feature table is made just in case pandas changes the main table object when these edits are made
-    feature_table_masked = feature_table.copy(deep=True)
-    extraneous_non_sample_columns = ['Taxonomy', 'Sequence'] + TAXONOMY_RANKS
-    for extraneous_non_sample_column in extraneous_non_sample_columns:
-        if extraneous_non_sample_column in feature_table_masked.columns:
-            logger.debug(f'Masking non-sample column "{extraneous_non_sample_column}" prior to sorting.')
-            feature_table_masked = feature_table_masked.drop(columns=extraneous_non_sample_column)
-
     logger.debug('Sorting feature table by maximum count of each feature')
-    max_value_per_feature = feature_table_masked.set_index('Feature ID').max(axis=1)
-    feature_table = feature_table.set_index('Feature ID')
-    feature_table[sort_column_id] = max_value_per_feature
+    feature_table = mask_metadata_columns(feature_table)
+    # Get max value per feature
+    feature_table[sort_column_id] = feature_table.max(axis=1)
     feature_table = feature_table.reset_index()
-    feature_table = feature_table.sort_values(by=[sort_column_id, 'Feature ID'], ascending=[False, True])
-    feature_table = feature_table.drop(columns=sort_column_id)
+
+    feature_table = feature_table.sort_values(by=[sort_column_id, 'Feature ID'], ascending=[False, True])\
+        .drop(columns=sort_column_id)
 
     return feature_table
 
@@ -342,7 +377,7 @@ def resolve_taxonomy_entry(taxonomy_split: list) -> list:
 def generate_combined_feature_table(feature_table_filepath: str, sequence_filepath: str, taxonomy_filepath: str,
                                     normalization_method: str = None, sort_features: bool = False,
                                     rename_features: bool = False, parse_taxonomy: bool = False,
-                                    fill_unresolved_taxonomy: bool = False,
+                                    fill_unresolved_taxonomy: bool = False, sort_columns: bool = False,
                                     feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
     """
     Loads and parses a feature table, along with optional sequence and taxonomy info, to generate a combined feature
@@ -359,19 +394,17 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
     :param parse_taxonomy: whether to parse taxonomy into 7-rank taxonomy columns.
     :param fill_unresolved_taxonomy: whether to fill in blank taxonomy ranks with Unresolved_[taxon]. Requires
                                      parse_taxonomy to be True.
+    :param sort_columns: whether to sort columns alphabetically by sample ID
     :param feature_id_colname: name of the column where Feature IDs are stored in the output table.
     :return: a combined feature table as a pandas DataFrame.
     """
-    # Set sort_features to True if rename_features is True
     if rename_features is True:
         logger.debug('Changing sort_features to True because rename_features is True.')
         sort_features = True
 
-    if (fill_unresolved_taxonomy is True) & (parse_taxonomy is False):
-        error = ValueError(f'Setting fill_unresolved_taxonomy to True requires parse_taxonomy to be True, but '
-                           f'parse_taxonomy is "{parse_taxonomy}".')
-        logger.error(error)
-        raise error
+    if fill_unresolved_taxonomy is True:
+        logger.debug('Setting parse_taxonomy to True because fill_unresolved_taxonomy is True.')
+        parse_taxonomy = True
 
     # Load the feature table
     logger.debug('Loading feature table')
@@ -390,9 +423,7 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
         logger.debug('Parsing taxonomy into 7 ranks')
         taxonomy_entries_parsed = map(lambda entry: parse_silva_taxonomy_entry(entry, resolve=fill_unresolved_taxonomy),
                                       feature_table['Taxonomy'].tolist())
-        taxonomy_table_parsed = pd.DataFrame(taxonomy_entries_parsed,
-                                             columns=['Domain', 'Phylum', 'Class', 'Order', 'Family', 'Genus',
-                                                      'Species'])
+        taxonomy_table_parsed = pd.DataFrame(taxonomy_entries_parsed, columns=TAXONOMY_RANKS)
         # Bind to main table in place of 'Taxonomy'
         feature_table = pd.concat([feature_table, taxonomy_table_parsed], axis=1, sort=False)
         feature_table = feature_table.drop(columns='Taxonomy')
@@ -410,6 +441,9 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
         logger.debug('Renaming feature IDs sequentially')
         num_rows = feature_table.shape[0]
         feature_table['Feature ID'] = range(num_rows)
+
+    # Sort the feature table columns sensibly
+    feature_table = sort_feature_table_columns(feature_table, sort_sample_columns=sort_columns)
 
     # Change first column to that desired by user
     if feature_id_colname != 'Feature ID':
@@ -456,8 +490,9 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
                                     'column. You can optionally omit this flag and not have taxonomy added to the '
                                     'table.')
 
-    table_settings.add_argument('-p', '--percent', required=False, action='store_true',
-                                help='Optionally normalize to percent relative abundances for each sample.')
+    table_settings.add_argument('-n', '--normalize', required=False, choices=['percent', 'proportion'],
+                                help='Optionally normalize each sample by the desired normalization method (e.g., to '
+                                     'convert to percent relative abundance).')
     table_settings.add_argument('-S', '--sort_features', required=False, action='store_true',
                                 help='Optionally sort Feature IDs roughly based on overall abundance.')
     table_settings.add_argument('-R', '--rename_features', required=False, action='store_true',
@@ -469,8 +504,9 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     table_settings.add_argument('-u', '--fill_unresolved_taxonomy', required=False, action='store_true',
                                 help='Optionally add Unresolved_[taxon] labels for blank taxonomy ranks. Requires '
                                      '--parse_taxonomy.')
-    table_settings.add_argument('-N', '--feature_id_colname', metavar='NAME', required=False,
-                                default='Feature ID',
+    table_settings.add_argument('-C', '--sort_columns', required=False, action='store_true',
+                                help='Sort feature table columns by sample ID (alphabetically)')
+    table_settings.add_argument('-N', '--feature_id_colname', metavar='NAME', required=False, default='Feature ID',
                                 help='The name of the first column of the output feature table. [Default: '
                                      '"Feature ID"]')
     # TODO - add option to auto-detect if a QZA file is provided instead of the unpackaged file. Deal with the

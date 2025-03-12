@@ -10,7 +10,7 @@ import sys
 import logging
 import argparse
 
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 
 from ampliwrangler.utils import check_output_file, set_up_output_directory
 from ampliwrangler.tabulate import main as tabulate_main
