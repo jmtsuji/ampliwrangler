@@ -158,18 +158,16 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     file_settings = subparser.add_argument_group('Input/output file options')
     workflow_settings = subparser.add_argument_group('Workflow options')
 
-    file_settings.add_argument('-i', '--input_filepath', required=True,
+    file_settings.add_argument('-i', '--input_filepath', metavar='QZA', required=True,
                                help='The path to the input QZA FeatureTable file.')
-    file_settings.add_argument('-o', '--output_filepath', required=False, default='-',
+    file_settings.add_argument('-o', '--output_filepath', metavar='TSV', required=False, default='-',
                                help='The path to the output TSV file. Will write to STDOUT (-) if nothing is provided.')
-    file_settings.add_argument('-m', '--min_count_filepath', required=False, default=False,
+    file_settings.add_argument('-m', '--min_count_filepath', metavar='TXT', required=False, default=False,
                                help='Optional path to write a single-line text file with the lowest count value in the '
                                     'dataset.')
 
-    workflow_settings.add_argument('-T', '--tmp_dir', required=False, default='/tmp',
+    workflow_settings.add_argument('-T', '--tmp_dir', metavar='DIR', required=False, default='/tmp',
                                    help='Optional path to the temporary directory used for unpacking the QZA '
                                         '[default: /tmp].')
-    workflow_settings.add_argument('-v', '--verbose', required=False, action='store_true',
-                                   help='Enable for verbose logging.')
 
     return subparser

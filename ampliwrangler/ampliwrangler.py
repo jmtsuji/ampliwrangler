@@ -25,7 +25,7 @@ def main():
 
     """
     When installing through pip with pyprojects.toml a new python script is generated
-    that calls main() out of spokewrench.py. Run parser inside main() so it can be called 
+    that calls main() out of ampliwrangler.py. Run parser inside main() so it can be called 
     externally as a function.
     """
     parser = parse_cli()
@@ -84,7 +84,7 @@ def parse_cli():
     """
     cli_title = """Simple command-line utilities for enhancing QIIME2-based amplicon analyses."""
     parser = argparse.ArgumentParser(description=cli_title)
-    subparsers = parser.add_subparsers(help='Available modules')
+    subparsers = parser.add_subparsers(help='Available modules:')
 
     # Common arguments across all modules
     parent_parser = argparse.ArgumentParser(add_help=False)

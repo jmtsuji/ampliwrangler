@@ -70,22 +70,18 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     description = 'Simple script to split a QIIME2 manifest file into multiple files based on the run_ID column.'
 
     # Initialize within the provided subparser
-    subparser = subparsers.add_parser('count', help=description, parents=[parent_parser] if parent_parser else [])
+    subparser = subparsers.add_parser('split', help=description, parents=[parent_parser] if parent_parser else [])
 
     # Add attribute to tell main() what sub-command was called.
-    subparser.set_defaults(count=True)
+    subparser.set_defaults(split=True)
 
     file_settings = subparser.add_argument_group('Input/output file options')
-    workflow_settings = subparser.add_argument_group('Workflow options')
 
-    file_settings.add_argument('-i', '--input_filepath', metavar='input', required=True,
+    file_settings.add_argument('-i', '--input_filepath', metavar='MANIFEST', required=True,
                                help='The path to the input manifest file. Must match QIIME standards AND have a column '
                                     'named "run_ID" with a unique ID for each Illumina run')
-    file_settings.add_argument('-o', '--output_dir', metavar='output', required=True,
+    file_settings.add_argument('-o', '--output_dir', metavar='DIR', required=True,
                                help='The directory where output files (named "manifest_[RUN_ID].tsv") will be saved. '
                                     'Will OVERWRITE existing files.')
-
-    workflow_settings.add_argument('-v', '--verbose', required=False, action='store_true',
-                                   help='Enable for verbose logging.')
 
     return subparser

@@ -441,7 +441,6 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
 
     file_settings = subparser.add_argument_group('Input/output file options')
     table_settings = subparser.add_argument_group('Optional table manipulation options')
-    workflow_settings = subparser.add_argument_group('Workflow options')
 
     file_settings.add_argument('-f', '--feature_table', metavar='TSV', required=True,
                                help='The path to the input TSV feature table file.')
@@ -474,9 +473,6 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
                                 default='Feature ID',
                                 help='The name of the first column of the output feature table. [Default: '
                                      '"Feature ID"]')
-
-    workflow_settings.add_argument('-v', '--verbose', required=False, action='store_true',
-                                   help='Enable for verbose logging.')
     # TODO - add option to auto-detect if a QZA file is provided instead of the unpackaged file. Deal with the
     #  conversions. Same for if a BIOM file is provided.
 
