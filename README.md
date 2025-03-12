@@ -32,7 +32,7 @@ ampliwrangler -h
 ## Included modules
 See full usage instructions for each module in the Appendix at the end of this README.
 
-### `ampliwrangler tabulate`
+### ampliwrangler tabulate
 Adds taxonomy and representative sequence information onto a Feature Table.
 
 Example (test data in repo):
@@ -48,11 +48,17 @@ ampliwrangler tabulate \
   --parse_taxonomy
 ```
 
-### `ampliwrangler count`
+### ampliwrangler count
+TODO - not yet validated as working
+
 Summarizes total counts per sample for a QZA `FeatureCounts[Frequency]` archive. 
 This script is nice if trying to decide how to rarefy your data, for example.
 
 See full usage instructions at the end of the README.
+
+### ampliwrangler split
+TODO - add docs
+TODO - not yet validated as working
 
 ## Testing
 Run an automated end-to-end test of `ampliwrangler tabulate` via:
@@ -68,12 +74,108 @@ If you benefit from using qiime2helpers, please cite the repo in a way similar t
 ## Appendix: full usage instructions for modules
 Copied from the command line help messages
 
-`ampliwrangler tabulate`
-```
-TODO
+ampliwrangler
+```commandline
+usage: ampliwrangler [-h] [-V] {tabulate,count,split} ...
+
+Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.0
+
+positional arguments:
+  {tabulate,count,split}
+                        Available modules:
+    tabulate            Creates a TSV-format QIIME2 feature table with overlaid taxonomy and sequence information.
+    count               Creates a tabular summary of the total read counts of all samples in a qiime2 feature table.
+    split               Simple script to split a QIIME2 manifest file into multiple files based on the run ID column.
+
+options:
+  -h, --help            show this help message and exit
+  -V, --version         Print tool version and exit
 ```
 
-`ampliwrangler count`
+ampliwrangler tabulate
+```commandline
+usage: ampliwrangler tabulate [-h] [-lf PATH] [-O] [-v] -f TSV [-o TSV] [-s FASTA] [-t TSV] [-n {percent,proportion}] [-S] [-R] [-P] [-u] [-C] [-N NAME]
+
+options:
+  -h, --help            show this help message and exit
+
+Basic config settings:
+  -lf PATH, --logfile PATH
+                        Log filepath (default: None)
+  -O, --overwrite       Overwrite existing files/directories. By setting this flag, you risk erasing old data.
+  -v, --verbose         Enable verbose logging
+
+Input/output file options:
+  -f TSV, --feature_table TSV
+                        The path to the input TSV feature table file.
+  -o TSV, --output_feature_table TSV
+                        The path to the output TSV feature table. Will write to STDOUT (-) if nothing is provided.
+  -s FASTA, --sequences FASTA
+                        The path to the input FastA ASV/OTU sequence file. Sequences will be added as the "Sequences" column. You can optionally omit this flag and not have sequences added to the
+                        table.
+  -t TSV, --taxonomy TSV
+                        The path to the input taxonomy file. Taxonomy will be added as the "Taxonomy" column. You can optionally omit this flag and not have taxonomy added to the table.
+
+Optional table manipulation options:
+  -n {percent,proportion}, --normalize {percent,proportion}
+                        Optionally normalize each sample by the desired normalization method (e.g., to convert to percent relative abundance).
+  -S, --sort_features   Optionally sort Feature IDs roughly based on overall abundance.
+  -R, --rename_features
+                        Optionally rename the Feature IDs sequentially, roughly based on overall abundance. Automatically sets --sort_features.
+  -P, --parse_taxonomy  Optionally parse Silva taxonomy into 7 ranks with columns "Domain", "Phylum", etc.
+  -u, --fill_unresolved_taxonomy
+                        Optionally add Unresolved_[taxon] labels for blank taxonomy ranks. Requires --parse_taxonomy.
+  -C, --sort_columns    Sort feature table columns by sample ID (alphabetically)
+  -N NAME, --feature_id_colname NAME
+                        The name of the first column of the output feature table. [Default: "Feature ID"]
 ```
-TODO
+
+ampliwrangler count
+```commandline
+usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i QZA [-o TSV] [-m TXT] [-T DIR]
+
+options:
+  -h, --help            show this help message and exit
+
+Basic config settings:
+  -lf PATH, --logfile PATH
+                        Log filepath (default: None)
+  -O, --overwrite       Overwrite existing files/directories. By setting this flag, you risk erasing old data.
+  -v, --verbose         Enable verbose logging
+
+Input/output file options:
+  -i QZA, --input_filepath QZA
+                        The path to the input QZA FeatureTable file.
+  -o TSV, --output_filepath TSV
+                        The path to the output TSV file. Will write to STDOUT (-) if nothing is provided.
+  -m TXT, --min_count_filepath TXT
+                        Optional path to write a single-line text file with the lowest count value in the dataset.
+
+Workflow options:
+  -T DIR, --tmp_dir DIR
+                        Optional path to the temporary directory used for unpacking the QZA. A random subdirectory will be temporarily created here [default: .].
+```
+
+ampliwrangler split
+```commandline
+usage: ampliwrangler split [-h] [-lf PATH] [-O] [-v] -i MANIFEST -o DIR [-r STR]
+
+options:
+  -h, --help            show this help message and exit
+
+Basic config settings:
+  -lf PATH, --logfile PATH
+                        Log filepath (default: None)
+  -O, --overwrite       Overwrite existing files/directories. By setting this flag, you risk erasing old data.
+  -v, --verbose         Enable verbose logging
+
+Input/output file options:
+  -i MANIFEST, --input_filepath MANIFEST
+                        The path to the input manifest file. Must match QIIME standards AND have a column with a unique ID for each sequencing run as specified in --run_id_column
+  -o DIR, --output_dir DIR
+                        The directory where output files (named "manifest_[RUN_ID].tsv") will be saved. Will OVERWRITE existing files.
+
+Other params:
+  -r STR, --run_id_column STR
+                        Name of the column in the input manifest file that contains the unique IDs for each run. [default: run_ID]
 ```
