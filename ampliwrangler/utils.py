@@ -1,12 +1,14 @@
 #!/usr/bin/env python
-# utils.py
-# Utility functions within spokewrench
-# Copyright Jackson M. Tsuji and Lee H. Bergstrand 2024
+"""
+utils.py
+Description: utility functions within ampliwrangler
+Copyright: Jackson M. Tsuji, 2025
+"""
+
+# Imports
 import logging
 import os
 import sys
-
-from Bio import SeqIO
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,9 @@ def check_output_file(output_filepath: str, overwrite: bool = False):
         elif overwrite is True:
             logger.warning(f'Output file already exists: "{output_filepath}". File will be overwritten.')
         else:
-            raise ValueError(f'overwrite must be True or False, but you provided "{overwrite}"')
+            error = ValueError(f'overwrite must be True or False, but you provided "{overwrite}"')
+            logger.error(error)
+            raise error
 
 
 def set_up_output_directory(output_directory_filepath: str, overwrite: bool = False):
@@ -44,25 +48,13 @@ def set_up_output_directory(output_directory_filepath: str, overwrite: bool = Fa
 
     if output_dir_exists is True:
         if overwrite is False:
-            logger.error(f'Output directory already exists: "{output_directory_filepath}". Will not continue. Set the '
-                         f'--overwrite flag at your own risk if you want to use an existing directory.')
-            sys.exit(1)
+            error = RuntimeError(f'Output directory already exists: "{output_directory_filepath}". Will not continue. '
+                                 f'Set the --overwrite flag at your own risk if you want to use an existing directory.')
+            logger.error(error)
+            raise error
         elif overwrite is True:
             logger.warning(f'Output directory already exists: "{output_directory_filepath}". Files may be overwritten.')
         else:
             raise ValueError(f'overwrite must be True or False, but you provided "{overwrite}"')
 
     os.makedirs(output_directory_filepath, exist_ok=True)
-
-
-def load_fasta_sequences(fasta_filepath: str):
-    """
-    Loads an input FastA file as a generator.
-
-    :param fasta_filepath: Path to the FastA file (unzipped) to load
-    :return: generator of a SeqRecord object for the loaded sequences
-    """
-
-    with open(fasta_filepath) as fasta_handle:
-        for record in SeqIO.parse(fasta_handle, 'fasta'):
-            yield record

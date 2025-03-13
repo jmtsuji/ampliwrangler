@@ -12,6 +12,7 @@ import logging
 import argparse
 
 import pandas as pd
+from ampliwrangler.utils import check_output_file
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +30,19 @@ def main(args):
         logging.getLogger('ampliwrangler.split').setLevel(logging.INFO)
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])}')
-    logger.info(f'Input filepath: {args.input_filepath}')
-    logger.info(f'Output directory: {args.output_dir}')
-    logger.info(f'Run ID column name: {args.run_id_column}')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} split')
+    logger.debug(f'Input filepath: {args.input_filepath}')
+    logger.debug(f'Output directory: {args.output_dir}')
+    logger.debug(f'Run ID column name: {args.run_id_column}')
+    logger.debug(f'Overwrite existing files: {args.overwrite}')
 
-    split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column)
+    split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column, args.overwrite)
+
+    logger.info(f'{os.path.basename(sys.argv[0])} split: done.')
 
 
-def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column: str = 'run_ID'):
+def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column: str = 'run_ID',
+                             overwrite: bool = False):
     """
     Splits an input manifest file by run based on values in the run ID column.
     Writes outputs as individual manifest files.
@@ -45,6 +50,7 @@ def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column
     :param input_filepath: path to the input manifest file
     :param output_dir: path to the directory where manifest files, split by run ID, will be written
     :param run_id_column: name of the column in the input manifest file with run IDs
+    :param overwrite: whether or not to overwrite any existing files
     :return: writes output files to output_dir
     """
     # Load manifest file
@@ -66,13 +72,12 @@ def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column
     for run_id in unique_run_ids:
         output_filename = f'manifest_{run_id}.tsv'
         output_filepath = os.path.join(output_dir, output_filename)
-        # TODO - check if output_filepath already exists and do not write output unless --force is specified
+
+        check_output_file(output_filepath, overwrite=overwrite)
         logger.info(f'Writing run "{run_id}" to file "{output_filename}".')
 
         single_run_table = manifest_table[manifest_table[run_id_column] == run_id]
         pd.DataFrame.to_csv(single_run_table, output_filepath, sep='\t', index=False)
-
-    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
 
 
 def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
@@ -98,15 +103,14 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     file_settings = subparser.add_argument_group('Input/output file options')
     run_settings = subparser.add_argument_group('Other params')
 
-    file_settings.add_argument('-i', '--input_filepath', metavar='MANIFEST', required=True,
+    file_settings.add_argument('-i', '--input_filepath', metavar='TSV', required=True,
                                help='The path to the input manifest file. Must match QIIME standards AND have a column '
                                     'with a unique ID for each sequencing run as specified in --run_id_column')
     file_settings.add_argument('-o', '--output_dir', metavar='DIR', required=True,
-                               help='The directory where output files (named "manifest_[RUN_ID].tsv") will be saved. '
-                                    'Will OVERWRITE existing files.')
+                               help='The directory where output files (named "manifest_[RUN_ID].tsv") will be saved.')
 
     run_settings.add_argument('-r', '--run_id_column', metavar='STR', required=False, default='run_ID',
-                               help='Name of the column in the input manifest file that contains the unique IDs for '
-                                    'each run. [default: run_ID]')
+                              help='Name of the column in the input manifest file that contains the unique IDs for '
+                                   'each run. [default: run_ID]')
 
     return subparser

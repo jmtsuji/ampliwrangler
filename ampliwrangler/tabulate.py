@@ -12,8 +12,9 @@ import logging
 import argparse
 import re
 
-from ampliwrangler.utils import load_fasta_sequences
 import pandas as pd
+from ampliwrangler.utils import check_output_file
+from ampliwrangler.load import load_feature_table, load_taxonomy, load_sequence_table
 
 # GLOBAL VARIABLES
 # TODO - move these somewhere central
@@ -41,8 +42,10 @@ def main(args):
         logger.error(error)
         raise error
 
+    check_output_file(args.output_feature_table, overwrite=args.overwrite)
+
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])}')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} tabulate')
     logger.debug('### SETTINGS ###')
     logger.debug(f'Feature table filepath: {args.feature_table}')
     logger.debug(f'Representative sequences filepath: {args.sequences}')
@@ -54,7 +57,10 @@ def main(args):
     logger.debug(f'Parse Silva taxonomy into 7 ranks?: {args.parse_taxonomy}')
     logger.debug(f'Fill in blank taxonomy ranks with Unresolved_[taxon]?: {args.fill_unresolved_taxonomy}')
     logger.debug(f'Sort table columns alphabetically?: {args.sort_columns}')
-    logger.debug(f'Feature ID column name for the output table: {args.feature_id_colname}')
+    logger.debug(f'Header row detection for feature table: {args.header_row}')
+    logger.debug(f'Feature ID column name detection for input feature table: {args.original_feature_id_colname}')
+    logger.debug(f'Feature ID column name for the final output table: {args.final_feature_id_colname}')
+    logger.debug(f'Overwrite existing files: {args.overwrite}')
     logger.debug(f'Verbose logging: {args.verbose}')
     logger.debug('################')
 
@@ -67,7 +73,9 @@ def main(args):
                                                     parse_taxonomy=args.parse_taxonomy,
                                                     fill_unresolved_taxonomy=args.fill_unresolved_taxonomy,
                                                     sort_columns=args.sort_columns,
-                                                    feature_id_colname=args.feature_id_colname)
+                                                    header_row=args.header_row,
+                                                    original_feature_id_colname=args.original_feature_id_colname,
+                                                    final_feature_id_colname=args.final_feature_id_colname)
     # Write output
     if args.output_feature_table == '-':
         # Write to STDOUT
@@ -77,36 +85,7 @@ def main(args):
         logger.info(f'Writing merged table to {args.output_feature_table}')
         feature_table.to_csv(args.output_feature_table, sep='\t', index=False)
 
-    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
-
-
-def load_feature_table(feature_table_filepath: str) -> pd.DataFrame:
-    """
-    Read a QIIME2 feature table
-
-    :param feature_table_filepath: Path to the QIIME2 FeatureTable file, TSV format
-    :return: QIIME2 FeatureTable[Frequency] artifact as a pandas DataFrame
-    """
-    # Load the table
-    feature_table = pd.read_csv(feature_table_filepath, sep='\t', skiprows=1)
-
-    # Check if the first column looks okay
-    if feature_table.columns[0] != 'Feature ID':
-        if feature_table.columns[0] == '#OTU ID':
-            logger.debug('Renaming first column of feature table ("#OTU ID") to "Feature ID"')
-            feature_table = feature_table.rename(columns={'#OTU ID': 'Feature ID'})
-        elif 'Feature ID' in feature_table.columns:
-            error = ValueError('"Feature ID" column already exists in provided feature table and is not the first '
-                               'column.')
-            logger.error(error)
-            raise error
-        else:
-            error = RuntimeError('The first column of the feature table should be "Feature ID" or "#OTU ID", '
-                                 'but instead, it is "{feature_table.columns[0]}"')
-            logger.error(error)
-            raise error
-
-    return feature_table
+    logger.info(f'{os.path.basename(sys.argv[0])} tabulate: done.')
 
 
 def mask_metadata_columns(feature_table: pd.DataFrame, metadata_columns: list = 'default') -> pd.DataFrame:
@@ -237,8 +216,8 @@ def add_taxonomy_to_feature_table(feature_table: pd.DataFrame, taxonomy_filepath
 
     # Load taxonomy file
     logger.debug('Loading taxonomy file and adding taxonomy info')
-    taxonomy_table = pd.read_csv(taxonomy_filepath, sep='\t')
-    taxonomy_table = taxonomy_table.rename(columns={'Taxon': 'Taxonomy'})
+    taxonomy_table = load_taxonomy(taxonomy_filepath)\
+        .rename(columns={'Taxon': 'Taxonomy'})
     taxonomy_table = taxonomy_table[['Feature ID', 'Taxonomy']]
 
     # Merge
@@ -263,13 +242,7 @@ def add_sequences_to_feature_table(feature_table: pd.DataFrame, seq_filepath: st
         raise error
 
     logger.debug('Loading and adding representative sequences')
-    fasta_ids = []
-    fasta_seqs = []
-    for record in load_fasta_sequences(seq_filepath):
-        fasta_ids.append(record.id)
-        fasta_seqs.append(record.seq)
-
-    seq_table = pd.DataFrame({'Feature ID': fasta_ids, 'Sequence': fasta_seqs})
+    seq_table = load_sequence_table(seq_filepath)
 
     # Merge
     feature_table = pd.merge(feature_table, seq_table, how='left', on='Feature ID', validate='1:1')
@@ -378,7 +351,8 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
                                     normalization_method: str = None, sort_features: bool = False,
                                     rename_features: bool = False, parse_taxonomy: bool = False,
                                     fill_unresolved_taxonomy: bool = False, sort_columns: bool = False,
-                                    feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
+                                    header_row='auto', original_feature_id_colname: str = 'auto',
+                                    final_feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
     """
     Loads and parses a feature table, along with optional sequence and taxonomy info, to generate a combined feature
     table. Optionally parses taxonomy, sorts features, and renames features.
@@ -395,7 +369,13 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
     :param fill_unresolved_taxonomy: whether to fill in blank taxonomy ranks with Unresolved_[taxon]. Requires
                                      parse_taxonomy to be True.
     :param sort_columns: whether to sort columns alphabetically by sample ID
-    :param feature_id_colname: name of the column where Feature IDs are stored in the output table.
+    :param header_row: for TSV format files, manually specify the header row here, as per the header argument in
+                        pd.read_csv (e.g., by integer, where 0 is the top row), or specify 'auto' to try to auto-detect
+                        the correct header row.
+    :param original_feature_id_colname: for TSV format files, optionally specify the name of the feature ID column in
+                                        the provided table. Must be the first column in the table. Auto-detection is
+                                        attempted if 'auto' is provided.
+    :param final_feature_id_colname: name to give the column where Feature IDs are stored in the final output table.
     :return: a combined feature table as a pandas DataFrame.
     """
     if rename_features is True:
@@ -408,7 +388,10 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
 
     # Load the feature table
     logger.debug('Loading feature table')
-    feature_table = load_feature_table(feature_table_filepath)
+    # TODO - consider exposing tmp_dir to the user
+    feature_table = load_feature_table(feature_table_filepath, header_row=header_row,
+                                       original_feature_id_colname=original_feature_id_colname,
+                                       final_feature_id_colname='Feature ID')
 
     # Normalize
     if normalization_method is not None:
@@ -446,9 +429,9 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
     feature_table = sort_feature_table_columns(feature_table, sort_sample_columns=sort_columns)
 
     # Change first column to that desired by user
-    if feature_id_colname != 'Feature ID':
-        logger.debug('Changing "Feature ID" colname to "' + feature_id_colname + '"')
-        feature_table = feature_table.rename(columns={'Feature ID': feature_id_colname})
+    if final_feature_id_colname != 'Feature ID':
+        logger.debug('Changing "Feature ID" colname to "' + final_feature_id_colname + '"')
+        feature_table = feature_table.rename(columns={'Feature ID': final_feature_id_colname})
 
     return feature_table
 
@@ -506,7 +489,14 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
                                      '--parse_taxonomy.')
     table_settings.add_argument('-C', '--sort_columns', required=False, action='store_true',
                                 help='Sort feature table columns by sample ID (alphabetically)')
-    table_settings.add_argument('-N', '--feature_id_colname', metavar='NAME', required=False, default='Feature ID',
+    table_settings.add_argument('-H', '--header_row', metavar='NUM', required=False, default='auto',
+                                help='The row to use as header for the input feature table (e.g., 0 = top row). '
+                                     '[Default: "auto" = auto detect best row]')
+    table_settings.add_argument('-i', '--original_feature_id_colname', metavar='NAME', required=False, default='auto',
+                                help='The name of the Feature ID column of the input feature table. [Default: '
+                                     '"auto" = auto detect]')
+    table_settings.add_argument('-I', '--final_feature_id_colname', metavar='NAME', required=False,
+                                default='Feature ID',
                                 help='The name of the first column of the output feature table. [Default: '
                                      '"Feature ID"]')
     # TODO - add option to auto-detect if a QZA file is provided instead of the unpackaged file. Deal with the

@@ -107,7 +107,7 @@ ampliwrangler tabulate \
   -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
   -o "${output_dir}/${test_ID}.tsv" \
-  -N "#OTU ID" \
+  -I "#OTU ID" \
   -R \
   -v \
   > "${output_dir}/${test_ID}.log" 2>&1
@@ -124,7 +124,7 @@ test_ID="03_simple"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler tabulate \
   -f "${input_dir}/feature-table.tsv" \
-  -N "#OTU ID" \
+  -I "#OTU ID" \
   -R \
   -v \
   > "${output_dir}/${test_ID}.tsv" \
@@ -164,6 +164,30 @@ ampliwrangler tabulate \
   -f "${input_dir}/feature-table.tsv" \
   -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
+  -n "percent" \
+  -o "${output_dir}/${test_ID}.tsv" \
+  -v \
+  > "${output_dir}/${test_ID}.log" 2>&1
+# TODO - print an error message if this fails
+
+# Generate MD5 hash on expected output
+cat "${output_dir}/${test_ID}.tsv" | md5sum > "${output_dir}/${test_ID}.tsv.md5"
+
+# Compare
+check_md5s "${test_ID}"
+
+## Test 6
+## To make input data:
+# biom convert --to-hdf5 -i feature-table.tsv -o feature-table.biom --table-type "OTU table"
+# qiime tools import --type "FeatureTable[Frequency]" --input-path feature-table.biom --output-path feature-table.qza
+# qiime tools import --type FeatureData[Sequence] --input-path dna-sequences.fasta --output-path dna-sequences.qza
+# qiime tools import --type FeatureData[Taxonomy] --input-path taxonomy.tsv --output-path taxonomy.qza
+test_ID="06_qza"
+echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
+ampliwrangler tabulate \
+  -f "${input_dir}/feature-table.qza" \
+  -s "${input_dir}/dna-sequences.qza" \
+  -t "${input_dir}/taxonomy.qza" \
   -n "percent" \
   -o "${output_dir}/${test_ID}.tsv" \
   -v \
