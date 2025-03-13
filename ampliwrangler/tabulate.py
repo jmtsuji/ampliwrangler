@@ -44,7 +44,7 @@ def main(args):
     check_output_file(args.output_feature_table, overwrite=args.overwrite)
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])}')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} tabulate')
     logger.debug('### SETTINGS ###')
     logger.debug(f'Feature table filepath: {args.feature_table}')
     logger.debug(f'Representative sequences filepath: {args.sequences}')
@@ -80,7 +80,7 @@ def main(args):
         logger.info(f'Writing merged table to {args.output_feature_table}')
         feature_table.to_csv(args.output_feature_table, sep='\t', index=False)
 
-    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
+    logger.info(f'{os.path.basename(sys.argv[0])} tabulate: done.')
 
 
 def load_feature_table(feature_table_filepath: str) -> pd.DataFrame:

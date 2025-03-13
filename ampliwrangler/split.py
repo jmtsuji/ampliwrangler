@@ -30,7 +30,7 @@ def main(args):
         logging.getLogger('ampliwrangler.split').setLevel(logging.INFO)
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])}')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} split')
     logger.debug(f'Input filepath: {args.input_filepath}')
     logger.debug(f'Output directory: {args.output_dir}')
     logger.debug(f'Run ID column name: {args.run_id_column}')
@@ -38,6 +38,8 @@ def main(args):
 
     set_up_output_directory(args.output_dir, args.overwrite)
     split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column, args.overwrite)
+
+    logger.info(f'{os.path.basename(sys.argv[0])} split: done.')
 
 
 def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column: str = 'run_ID',
@@ -77,8 +79,6 @@ def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column
 
         single_run_table = manifest_table[manifest_table[run_id_column] == run_id]
         pd.DataFrame.to_csv(single_run_table, output_filepath, sep='\t', index=False)
-
-    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
 
 
 def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):

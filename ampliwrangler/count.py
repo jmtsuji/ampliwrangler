@@ -11,7 +11,7 @@ import os
 import logging
 import argparse
 
-from ampliwrangler.utils import check_output_file, load_biom_df_from_qza
+from ampliwrangler.utils import check_output_file, load_feature_table
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def main(args):
         check_output_file(args.min_count_filepath, overwrite=args.overwrite)
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])}')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} count')
     logger.debug(f'Input filepath: {args.input_filepath}')
     logger.debug(f'Output filepath: {args.output_filepath}')
     logger.debug(f'Min count filepath: {args.min_count_filepath}')
@@ -42,6 +42,8 @@ def main(args):
     logger.debug(f'Verbose logging: {args.verbose}')
 
     process_sample_counts(args.input_filepath, args.output_filepath, args.min_count_filepath, args.tmp_dir)
+
+    logger.info(f'{os.path.basename(sys.argv[0])} count: done.')
 
 
 def process_sample_counts(input_filepath: str, output_filepath: str, min_count_filepath: str = None,
@@ -56,11 +58,11 @@ def process_sample_counts(input_filepath: str, output_filepath: str, min_count_f
     :return: writes output files to output_filepath and optionally min_count_filepath
     """
     # Load the BIOM table from within the QZA (ZIP) file
-    biom_table = load_biom_df_from_qza(input_filepath, tmp_dir)
+    feature_data = load_feature_table(input_filepath, tmp_dir=tmp_dir)
 
     # Sum columns
-    logger.info('Summarizing BIOM file')
-    sample_counts = biom_table.sum().to_frame().reset_index()
+    logger.info('Summarizing FeatureTable counts')
+    sample_counts = feature_data.sum().to_frame().reset_index()
     sample_counts.columns = ['sample-id', 'count']
     # Sort by count
     sample_counts = sample_counts.sort_values(by=['count'], ascending=False)
@@ -81,8 +83,6 @@ def process_sample_counts(input_filepath: str, output_filepath: str, min_count_f
         with open(min_count_filepath, 'w') as min_count_file:
             min_count_file.write(f'{str(min_count)}\n')
 
-    logger.info(f'{os.path.basename(sys.argv[0])}: done.')
-
 
 def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     """
@@ -96,7 +96,7 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     :return: An ArgumentParser object created by subparsers.add_parser()
     """
 
-    description = 'Creates a tabular summary of the total read counts of all samples in a qiime2 feature table.'
+    description = 'Creates a tabular summary of the total read counts of all samples in a feature table.'
 
     # Initialize within the provided subparser
     subparser = subparsers.add_parser('count', help=description, parents=[parent_parser] if parent_parser else [])
@@ -107,9 +107,9 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     file_settings = subparser.add_argument_group('Input/output file options')
     workflow_settings = subparser.add_argument_group('Workflow options')
 
-    file_settings.add_argument('-i', '--input_filepath', metavar='QZA', required=True,
-                               help='The path to the input QZA FeatureTable file.')
-    file_settings.add_argument('-o', '--output_filepath', metavar='TSV', required=False, default='-',
+    file_settings.add_argument('-i', '--input_filepath', metavar='TABLE', required=True,
+                               help='The path to the input FeatureTable file, either QZA, BIOM, or TSV.')
+    file_settings.add_argument('-o', '--output_filepath', metavar='TABLE', required=False, default='-',
                                help='The path to the output TSV file. Will write to STDOUT (-) if nothing is provided.')
     file_settings.add_argument('-m', '--min_count_filepath', metavar='TXT', required=False, default=None,
                                help='Optional path to write a single-line text file with the lowest count value in the '

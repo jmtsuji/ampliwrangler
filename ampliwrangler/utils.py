@@ -117,7 +117,42 @@ def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str =
     return target_contents
 
 
-def load_biom_df_from_qza(qza_filepath: str, tmp_dir: str) -> pd.DataFrame:
+def load_tsv_feature_table(tsv_filepath: str, header_row='auto') -> pd.DataFrame:
+    """
+    Loads a TSV-format FeatureTable as a pandas DataFrame. Roughly tries to handle screening out a header line.
+    :params tsv_filepath: path to the TSV-format FeatureTable
+    :params header_row: manually specify the header row as per the header argument in pd.read_csv (e.g., by integer,
+                        where 0 is the top row), or specify 'auto' to try to auto-detect the correct header row.
+    :return: FeatureTable data as a pandas DataFrame
+    """
+    if header_row == 'auto':
+        # Roughly check if the FeatureTable has a first header line or not
+        with open(tsv_filepath, 'r') as input_handle:
+            first_line = input_handle.readline()
+
+        if first_line == '# Constructed from biom file\n':
+            feature_data = pd.read_csv(tsv_filepath, sep='\t', header=1)
+        else:
+            feature_data = pd.read_csv(tsv_filepath, sep='\t', header=0)
+
+    else:
+        feature_data = pd.read_csv(tsv_filepath, sep='\t', header=header_row)
+
+    return feature_data
+
+
+def load_biom_feature_table(biom_filepath: str) -> pd.DataFrame:
+    """
+    Load a biom-format feature table as a pandas DataFrame
+    :params biom_filepath: path to the biom-format file to load
+    :return: pandas DataFrame of the biom file data
+    """
+    biom_table = biom.load_table(biom_filepath).to_dataframe()
+
+    return biom_table
+
+
+def load_qza_feature_table(qza_filepath: str, tmp_dir: str = '.') -> pd.DataFrame:
     """
     Load a BIOM file from a QIIME2 QZA archive as a Pandas dataframe.
 
@@ -134,12 +169,44 @@ def load_biom_df_from_qza(qza_filepath: str, tmp_dir: str) -> pd.DataFrame:
     with open(biom_path, 'wb') as biom_handle:
         biom_handle.write(biom_contents)
 
-    # Load biom file and convert to pandas dataframe
-    logger.debug("Loading biom file")
-    biom_table = biom.load_table(biom_path).to_dataframe()
+    # Load biom file
+    biom_table = load_biom_feature_table(biom_path)
 
     # Delete tmp dir
     logger.debug(f'Removing temp dir {tmp_subdir}')
     shutil.rmtree(tmp_subdir)
 
     return biom_table
+
+
+def load_feature_table(feature_table_filepath, header_row='auto', tmp_dir: str = '.') -> pd.DataFrame:
+    """
+    Generalized function to load a feature table regardless of input format
+    :params feature_table_filepath: path to the feature table to load (in TSV, BIOM, or QZA format)
+    :params header_row: for TSV format files, manually specify the header row here, as per the header argument in
+                        pd.read_csv (e.g., by integer, where 0 is the top row), or specify 'auto' to try to auto-detect
+                        the correct header row.
+    :params tmp_dir: for QZA format files, optionally provide the base directory to extract the ZIP file to (will create
+                     a random subfolder here)
+    :return: pandas DataFrame of the loaded feature table
+    """
+    try:
+        # First try: assume TSV format
+        logger.debug(f'Trying to load FeatureTable as TSV: {feature_table_filepath}')
+        feature_data = load_tsv_feature_table(feature_table_filepath, header_row=header_row)
+        logger.debug(f'TSV loading succeeded')
+    except UnicodeDecodeError:
+        try:
+            # Second try: BIOM format
+            logger.debug(f'TSV loading failed')
+            logger.debug(f'Trying to load FeatureTable as BIOM: {feature_table_filepath}')
+            feature_data = load_biom_feature_table(feature_table_filepath)
+            logger.debug(f'BIOM loading succeeded')
+        except UnicodeDecodeError:
+            # Third try: QZA format
+            logger.debug(f'BIOM loading failed')
+            logger.debug(f'Trying to load FeatureTable as QZA: {feature_table_filepath}')
+            feature_data = load_qza_feature_table(feature_table_filepath, tmp_dir=tmp_dir)
+            logger.debug(f'QZA loading succeeded')
+
+    return feature_data
