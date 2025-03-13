@@ -1,12 +1,19 @@
 #!/usr/bin/env python
-# utils.py
-# Utility functions within spokewrench
-# Copyright Jackson M. Tsuji and Lee H. Bergstrand 2024
+"""
+utils.py
+Description: utility functions within ampliwrangler
+Copyright: Jackson M. Tsuji, 2025
+"""
+
+# Imports
 import logging
 import os
 import sys
+import shutil
 import uuid
+import biom
 
+import pandas as pd
 import zipfile as zf
 from Bio import SeqIO
 
@@ -72,7 +79,7 @@ def load_fasta_sequences(fasta_filepath: str):
             yield record
 
 
-def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str = 'data', tmp_dir: str = '.') -> bytes:
+def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str = 'data') -> bytes:
     """
     Unpack a data file from a QIIME2 QZA archive.
 
@@ -108,3 +115,31 @@ def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str =
             target_contents = target_handle.read()
 
     return target_contents
+
+
+def load_biom_df_from_qza(qza_filepath: str, tmp_dir: str) -> pd.DataFrame:
+    """
+    Load a BIOM file from a QIIME2 QZA archive as a Pandas dataframe.
+
+    :param qza_filepath: Path to the QIIME2 QZA archive, FeatureTable[Frequency] format
+    :param tmp_dir: The base directory to extract the ZIP file to (will create a random subfolder)
+    :return: pandas DataFrame of the BIOM table's count data
+    """
+    # Load the biom file contents in binary, then write to a temp file that biom.load_table can open
+    biom_contents = unpack_from_qza(qza_filepath, target_filename='feature-table.biom')
+    tmp_subdir = os.path.join(tmp_dir, f'.{uuid.uuid4().hex}')
+    set_up_output_directory(tmp_subdir, overwrite=False)
+    biom_path = os.path.join(tmp_subdir, 'feature-table.biom')
+    logger.debug(f'Writing temp biom file to {biom_path}')
+    with open(biom_path, 'wb') as biom_handle:
+        biom_handle.write(biom_contents)
+
+    # Load biom file and convert to pandas dataframe
+    logger.debug("Loading biom file")
+    biom_table = biom.load_table(biom_path).to_dataframe()
+
+    # Delete tmp dir
+    logger.debug(f'Removing temp dir {tmp_subdir}')
+    shutil.rmtree(tmp_subdir)
+
+    return biom_table

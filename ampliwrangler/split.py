@@ -12,7 +12,7 @@ import logging
 import argparse
 
 import pandas as pd
-from ampliwrangler.utils import check_output_file
+from ampliwrangler.utils import check_output_file, set_up_output_directory
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,7 @@ def main(args):
     logger.debug(f'Run ID column name: {args.run_id_column}')
     logger.debug(f'Overwrite existing files: {args.overwrite}')
 
+    set_up_output_directory(args.output_dir, args.overwrite)
     split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column, args.overwrite)
 
 
@@ -107,8 +108,7 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
                                help='The path to the input manifest file. Must match QIIME standards AND have a column '
                                     'with a unique ID for each sequencing run as specified in --run_id_column')
     file_settings.add_argument('-o', '--output_dir', metavar='DIR', required=True,
-                               help='The directory where output files (named "manifest_[RUN_ID].tsv") will be saved. '
-                                    'Will OVERWRITE existing files.')
+                               help='The directory where output files (named "manifest_[RUN_ID].tsv") will be saved.')
 
     run_settings.add_argument('-r', '--run_id_column', metavar='STR', required=False, default='run_ID',
                                help='Name of the column in the input manifest file that contains the unique IDs for '

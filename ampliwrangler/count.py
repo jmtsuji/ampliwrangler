@@ -8,15 +8,10 @@ Copyright: Jackson M. Tsuji, 2025
 # Imports
 import sys
 import os
-import shutil
 import logging
 import argparse
-import uuid
-import biom
 
-import zipfile as zf
-import pandas as pd
-from ampliwrangler.utils import check_output_file
+from ampliwrangler.utils import check_output_file, load_biom_df_from_qza
 
 logger = logging.getLogger(__name__)
 
@@ -47,61 +42,6 @@ def main(args):
     logger.debug(f'Verbose logging: {args.verbose}')
 
     process_sample_counts(args.input_filepath, args.output_filepath, args.min_count_filepath, args.tmp_dir)
-
-
-def unpack_biom_from_qza(input_filepath, tmp_dir, qza_biom_path='data/feature-table.biom') -> tuple:
-    """
-    Unzip a BIOM file from a QIIME2 QZA archive.
-
-    :global BIOM_PATH_PARTIAL: partial path to the biom file within the QZA archive
-    :param input_filepath: Path to the QIIME2 QZA archive, FeatureTable[Frequency] format
-    :param tmp_dir: The base directory to extract the ZIP file to (will create a random subfolder)
-    :param qza_biom_path: expected path for the BIOM file inside the unpacked QZA file
-    :return: tuple of the path to the unzipped BIOM file and the path to the random temp subfolder
-    """
-    logger.info('Unpacking QZA file')
-
-    with zf.ZipFile(input_filepath, 'r') as qza_data:
-        # Dump list of contents and determine path to the BIOM file
-        qza_data_contents = qza_data.namelist()
-
-        # Find the path to the biom file
-        # See https://stackoverflow.com/a/12845341 (accessed Sept. 12, 2019)
-        biom_filepath = list(filter(lambda x: qza_biom_path in x, qza_data_contents))
-        # TODO - check this is a list of length 1
-        logger.debug(f'Found biom file in QZA file at {biom_filepath[0]}')
-
-        # Extract the biom file to a randomly generated subfolder in tmp_dir
-        tmp_subdir = os.path.join(tmp_dir, uuid.uuid4().hex)
-        extraction_path = qza_data.extract(biom_filepath[0], path=tmp_subdir)
-        logger.debug(f'Extracted temp BIOM file to {extraction_path}')
-
-    biom_info = (extraction_path, tmp_subdir)
-
-    return biom_info
-
-
-def load_biom_df_from_qza(input_filepath: str, tmp_dir: str) -> pd.DataFrame:
-    """
-    Load a BIOM file from a QIIME2 QZA archive as a Pandas dataframe.
-
-    :param input_filepath: Path to the QIIME2 QZA archive, FeatureTable[Frequency] format
-    :param tmp_dir: The base directory to extract the ZIP file to (will create a random subfolder)
-    :return: pandas DataFrame of the BIOM table's count data
-    """
-    # Unzip the BIOM table from within the QZA (ZIP) file
-    biom_path, tmp_subdir = unpack_biom_from_qza(input_filepath, tmp_dir)
-
-    # Load biom file and convert to pandas dataframe
-    logger.debug("Loading BIOM file")
-    biom_data = biom.load_table(biom_path)
-    biom_table = biom_data.to_dataframe()
-
-    # Delete tmp dir
-    logger.debug(f'Removing temp dir {tmp_subdir}')
-    shutil.rmtree(tmp_subdir)
-
-    return biom_table
 
 
 def process_sample_counts(input_filepath: str, output_filepath: str, min_count_filepath: str = None,
