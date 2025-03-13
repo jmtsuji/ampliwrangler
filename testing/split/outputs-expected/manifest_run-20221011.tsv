@@ -1,0 +1,4 @@
+sample-id	run-id	forward-absolute-filepath	reverse-absolute-filepath
+ELA1718005	run-20221011	/example/path/ELA1718005_R1.fastq.gz	/example/path/ELA1718005_R2.fastq.gz
+ELA1718006	run-20221011	/example/path/ELA1718006_R1.fastq.gz	/example/path/ELA1718006_R2.fastq.gz
+ELA1718007	run-20221011	/example/path/ELA1718007_R1.fastq.gz	/example/path/ELA1718007_R2.fastq.gz

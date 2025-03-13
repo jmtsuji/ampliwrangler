@@ -40,7 +40,7 @@ def main(args):
     logger.info(f'Temp directory: {args.tmp_dir}')
     logger.info(f'Verbose logging: {args.verbose}')
 
-    process_sample_counts(args.input_filepath, args.output_filepath, args.min_count_filepath, args.tmp_dir_base)
+    process_sample_counts(args.input_filepath, args.output_filepath, args.min_count_filepath, args.tmp_dir)
 
 
 def unpack_biom_from_qza(input_filepath, tmp_dir, qza_biom_path='data/feature-table.biom') -> tuple:
@@ -65,7 +65,7 @@ def unpack_biom_from_qza(input_filepath, tmp_dir, qza_biom_path='data/feature-ta
         # TODO - check this is a list of length 1
         logger.debug(f'Found biom file in QZA file at {biom_filepath[0]}')
 
-        # Extract the biom file to a randomly generated subfolder in tmp_dir_base
+        # Extract the biom file to a randomly generated subfolder in tmp_dir
         tmp_subdir = os.path.join(tmp_dir, uuid.uuid4().hex)
         extraction_path = qza_data.extract(biom_filepath[0], path=tmp_subdir)
         logger.debug(f'Extracted temp BIOM file to {extraction_path}')
