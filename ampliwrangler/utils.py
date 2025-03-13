@@ -5,7 +5,9 @@
 import logging
 import os
 import sys
+import uuid
 
+import zipfile as zf
 from Bio import SeqIO
 
 logger = logging.getLogger(__name__)
@@ -68,3 +70,46 @@ def load_fasta_sequences(fasta_filepath: str):
     with open(fasta_filepath) as fasta_handle:
         for record in SeqIO.parse(fasta_handle, 'fasta'):
             yield record
+
+
+def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str = 'data', tmp_dir: str = '.') -> tuple:
+    """
+    Unpack a data file from a QIIME2 QZA archive.
+
+    :param qza_filepath: Path to the QIIME2 QZA archive
+    :param target_filename: name of the target file inside the unpacked QZA
+    :param qza_data_dir: expected path inside the QZA where the target file is stored
+    :param tmp_dir: The base directory to extract the QZA file to (will create a random subfolder inside)
+    :return: tuple: path to the unzipped file and the path to the random temp subfolder
+    """
+    logger.debug(f'Unpacking QZA file {qza_filepath}')
+
+    with zf.ZipFile(qza_filepath, 'r') as qza_data:
+        # Dump list of contents and determine path to the BIOM file
+        qza_data_contents = qza_data.namelist()
+
+        # Find the path to the target file
+        # TODO - consider getting the exact path more carefully by grabbing the UUID from metadata.yaml
+        target_path_partial = os.path.join(qza_data_dir, target_filename)
+        matching_filepaths = []
+        for filepath in qza_data_contents:
+            if target_path_partial in filepath:
+                matching_filepaths.append(filepath)
+
+        if len(matching_filepaths) == 1:
+            target_filepath = matching_filepaths[0]
+            logger.debug(f'Found target file in QZA at {target_filepath}')
+        else:
+            error = ValueError(f'Found more than one file matching the target: {matching_filepaths}')
+            logger.error(error)
+            raise error
+
+        # Extract the target file to a randomly generated subfolder in tmp_dir
+        tmp_subdir = os.path.join(tmp_dir, f'.{uuid.uuid4().hex}')
+        set_up_output_directory(tmp_subdir, overwrite=False)
+        extraction_path = qza_data.extract(target_filepath, path=tmp_subdir)
+        logger.debug(f'Extracted target file to {extraction_path}')
+
+    extracted_info = (extraction_path, tmp_subdir)
+
+    return extracted_info
