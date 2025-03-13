@@ -117,7 +117,7 @@ ampliwrangler
 ```commandline
 usage: ampliwrangler [-h] [-V] {tabulate,count,split} ...
 
-Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.1
+Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.2
 
 positional arguments:
   {tabulate,count,split}
