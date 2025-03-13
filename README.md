@@ -96,9 +96,15 @@ If you benefit from using qiime2helpers, please cite the repo in a way similar t
 ## Appendix 1: testing
 Run automated end-to-end tests as follows (in the command line, assuming you are in the git repo dir):
 
-### ampliwrangler tabulate
 ```bash
+# ampliwrangler tabulate
 testing/test-tabulate.sh testing/tabulate
+
+# ampliwrangler count
+testing/test-count.sh testing/count
+
+## ampliwrangler split
+testing/test-split.sh testing/split
 ```
 
 ## Appendix 2: full usage instructions for modules
