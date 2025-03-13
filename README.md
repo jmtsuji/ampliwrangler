@@ -1,6 +1,7 @@
 # ampliwrangler
 Simple command-line utilities for enhancing QIIME2-based amplicon analyses.
-Replacement for the [`qiime2-helpers`](https://github.com/jmtsuji/qiime2-helpers) repo
+
+Replacement for the [`qiime2-helpers`](https://github.com/jmtsuji/qiime2-helpers) repo.
 
 ## Installation
 `ampliwrangler` can be installed on Linux or MacOS as follows:
@@ -30,7 +31,18 @@ ampliwrangler -h
 ```
 
 ## Included modules
-See full usage instructions for each module in the Appendix at the end of this README.
+`ampliwrangler` consists of several loosely related modules that help clean up or speed up QIIME2-based amplicon
+analyses:
+- tabulate: feature table manipulations, including adding taxonomy and sequence info as "metadata" to the table for ease
+  of viewing
+- count: get the total read counts for all samples in feature table (or just the min count) - this is helpful for
+  quickly seeing what read count to rarefy to.
+- split: split a manifest file by a metadata column value such as sequencing run ID. It's recommended to run DADA2 (a
+  sequence denoising tool) on one sequencing run at a time, so it's helpful to be able to split the manifest file this
+  way for pre-DADA2 steps.
+
+Basic usage instructions are included below. See full usage instructions for each module in Appendix 2 at the end of
+this README.
 
 ### ampliwrangler tabulate
 Adds taxonomy and representative sequence information onto a Feature Table.
@@ -38,40 +50,58 @@ Adds taxonomy and representative sequence information onto a Feature Table.
 Example (test data in repo):
 ```bash
 # Assuming you are in the Github repo directory
-input_dir="testing/generate_combined_feature_table/inputs"
+input_dir="testing/tabulate/inputs"
 
 ampliwrangler tabulate \
-  -f "${input_dir}/feature_table.tsv" \
-  -s "${input_dir}/representative_seqs.fasta" \
+  -f "${input_dir}/feature-table.tsv" \
+  -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
-  -o "test_table.tsv" \
+  -o "feature-table-with-metadata.tsv" \
   --parse_taxonomy
 ```
 
 ### ampliwrangler count
-TODO - not yet validated as working
-
 Summarizes total counts per sample for a QZA `FeatureCounts[Frequency]` archive. 
 This script is nice if trying to decide how to rarefy your data, for example.
 
-See full usage instructions at the end of the README.
+Example (test data in repo):
+```bash
+# Assuming you are in the Github repo directory
+input_dir="testing/count/inputs"
+
+ampliwrangler count \
+  -i "${input_dir}/feature-table.qza" \
+  -o "sample-counts.tsv" \
+  -m "min-sample-count.txt"
+```
 
 ### ampliwrangler split
-TODO - add docs
-TODO - not yet validated as working
+Split a manifest file into multiple sub-files by a metadata column value such as sequencing run ID.
 
-## Testing
-Run an automated end-to-end test of `ampliwrangler tabulate` via:
+Example (test data in repo):
 ```bash
-testing/test-tabulate.sh \
-  testing/tabulate
+# Assuming you are in the Github repo directory
+input_dir="testing/split/inputs"
+
+ampliwrangler split \
+  -i "${input_dir}/manifest.tsv" \
+  -o "manifest-split-dir" \
+  -r "run-id"
 ```
 
 ## Citation
 If you benefit from using qiime2helpers, please cite the repo in a way similar to the following:
 > Tsuji, JM. ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. 2025. https://github.com/jmtsuji/ampliwrangler
 
-## Appendix: full usage instructions for modules
+## Appendix 1: testing
+Run automated end-to-end tests as follows (in the command line, assuming you are in the git repo dir):
+
+### ampliwrangler tabulate
+```bash
+testing/test-tabulate.sh testing/tabulate
+```
+
+## Appendix 2: full usage instructions for modules
 Copied from the command line help messages
 
 ampliwrangler

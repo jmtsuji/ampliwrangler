@@ -82,7 +82,7 @@ def main():
     if hasattr(args, 'tabulate'):
         tabulate_main(args)
     elif hasattr(args, 'count'):
-        rotate_main(args)
+        count_main(args)
     elif hasattr(args, 'split'):
         split_main(args)
     else:

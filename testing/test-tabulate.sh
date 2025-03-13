@@ -46,7 +46,7 @@ elif [[ $1 = "-h" ]] || [[ $1 = "--help" ]]; then
   printf "${SCRIPT_NAME}: run end-to-end test for ampliwrangler tabulate\n"
   printf "Usage: ${SCRIPT_NAME} test_dir\n\n"
   printf "Positional arguments (required):\n"
-  printf "   test_dir: path to the test directory containing the 'inputs' and 'outputs_expected' test folders\n\n"
+  printf "   test_dir: path to the test directory containing the 'inputs' and 'outputs-expected' test folders\n\n"
   printf "Note: script will give an exit status of 1 if any tests fail; otherwise exit status will be 0.\n\n"
 
   # Exit
@@ -61,7 +61,7 @@ echo "[ $(date -u) ]: Test dir: '${test_dir}'"
 
 ### Expected positions of folders
 input_dir="${test_dir}/inputs"
-expected_outputs_dir="${test_dir}/outputs_expected"
+expected_outputs_dir="${test_dir}/outputs-expected"
 output_dir="${test_dir}/outputs" # should NOT yet exist!
 
 ### Look for dirs
@@ -85,8 +85,8 @@ fi
 test_ID="01_standard"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler tabulate \
-  -f "${input_dir}/feature_table.tsv" \
-  -s "${input_dir}/representative_seqs.fasta" \
+  -f "${input_dir}/feature-table.tsv" \
+  -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
   -o "${output_dir}/${test_ID}.tsv" \
   -v \
@@ -103,8 +103,8 @@ check_md5s "${test_ID}"
 test_ID="02_renamed"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler tabulate \
-  -f "${input_dir}/feature_table.tsv" \
-  -s "${input_dir}/representative_seqs.fasta" \
+  -f "${input_dir}/feature-table.tsv" \
+  -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
   -o "${output_dir}/${test_ID}.tsv" \
   -N "#OTU ID" \
@@ -123,7 +123,7 @@ check_md5s "${test_ID}"
 test_ID="03_simple"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler tabulate \
-  -f "${input_dir}/feature_table.tsv" \
+  -f "${input_dir}/feature-table.tsv" \
   -N "#OTU ID" \
   -R \
   -v \
@@ -141,8 +141,8 @@ check_md5s "${test_ID}"
 test_ID="04_parsed"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler tabulate \
-  -f "${input_dir}/feature_table.tsv" \
-  -s "${input_dir}/representative_seqs.fasta" \
+  -f "${input_dir}/feature-table.tsv" \
+  -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
   -o "${output_dir}/${test_ID}.tsv" \
   -P \
@@ -161,8 +161,8 @@ check_md5s "${test_ID}"
 test_ID="05_normalize"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler tabulate \
-  -f "${input_dir}/feature_table.tsv" \
-  -s "${input_dir}/representative_seqs.fasta" \
+  -f "${input_dir}/feature-table.tsv" \
+  -s "${input_dir}/dna-sequences.fasta" \
   -t "${input_dir}/taxonomy.tsv" \
   -n "percent" \
   -o "${output_dir}/${test_ID}.tsv" \
