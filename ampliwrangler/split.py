@@ -12,7 +12,7 @@ import logging
 import argparse
 
 import pandas as pd
-from ampliwrangler.utils import check_output_file, set_up_output_directory
+from ampliwrangler.utils import check_output_file
 
 logger = logging.getLogger(__name__)
 

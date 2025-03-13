@@ -4,11 +4,10 @@ load.py
 Description: functions related to data loading within ampliwrangler
 Copyright: Jackson M. Tsuji, 2025
 """
-import io
 # Imports
 import logging
 import os
-import sys
+import io
 import shutil
 import uuid
 import biom
@@ -245,19 +244,6 @@ def load_taxonomy(taxonomy_filepath: str) -> pd.DataFrame:
     return taxonomy_data
 
 
-def yield_fasta_info(fasta_filepath: str):
-    """
-    Yields input FastA file as a generator.
-
-    :param fasta_filepath: Path to the FastA file (unzipped) to load
-    :return: generator of a SeqRecord object for the loaded sequences
-    """
-
-    with open(fasta_filepath) as fasta_handle:
-        for record in SeqIO.parse(fasta_handle, 'fasta'):
-            yield record
-
-
 def load_fasta_sequence_table(fasta_filepath: str) -> pd.DataFrame:
     """
     Loads a FastA file into a pandas DataFrame with two columns: Feature ID and Sequence
@@ -267,7 +253,31 @@ def load_fasta_sequence_table(fasta_filepath: str) -> pd.DataFrame:
     """
     fasta_ids = []
     fasta_seqs = []
-    for record in yield_fasta_info(fasta_filepath):
+    with open(fasta_filepath) as fasta_handle:
+        for record in SeqIO.parse(fasta_handle, 'fasta'):
+            fasta_ids.append(record.id)
+            fasta_seqs.append(str(record.seq))
+
+    sequence_table = pd.DataFrame({'Feature ID': fasta_ids, 'Sequence': fasta_seqs})
+
+    return sequence_table
+
+
+def load_qza_sequence_table(qza_filepath: str) -> pd.DataFrame:
+    """
+    Load a QZA DNA sequences file as a pandas DataFrame "sequence table" with two columns: Feature ID and Sequence
+
+    :param qza_filepath: path to the QZA DNA sequences file
+    :return: DNA sequence info as a pandas DataFrame
+    """
+    # Load the FastA file contents in binary, then use this to load the sequence table
+    fasta_contents = unpack_from_qza(qza_filepath, target_filename='dna-sequences.fasta')
+    parsable_fasta_contents = io.StringIO(fasta_contents.decode())
+
+    # Load sequence table
+    fasta_ids = []
+    fasta_seqs = []
+    for record in SeqIO.parse(parsable_fasta_contents, 'fasta'):
         fasta_ids.append(record.id)
         fasta_seqs.append(str(record.seq))
 
@@ -276,40 +286,11 @@ def load_fasta_sequence_table(fasta_filepath: str) -> pd.DataFrame:
     return sequence_table
 
 
-def load_qza_sequence_table(qza_filepath: str, tmp_dir: str = '.') -> pd.DataFrame:
-    """
-    Load a QZA DNA sequences file as a pandas DataFrame "sequence table" with two columns: Feature ID and Sequence
-
-    :param qza_filepath: path to the QZA DNA sequences file
-    :param tmp_dir: The base directory to extract the ZIP file to (will create a random subfolder)
-    :return: DNA sequence info as a pandas DataFrame
-    """
-    # Load the FastA file contents in binary, then write to a temp file that SeqIO can open
-    fasta_contents = unpack_from_qza(qza_filepath, target_filename='dna-sequences.fasta')
-
-    tmp_subdir = os.path.join(tmp_dir, f'.{uuid.uuid4().hex}')
-    set_up_output_directory(tmp_subdir, overwrite=False)
-    fasta_filepath = os.path.join(tmp_subdir, 'dna-sequences.fasta')
-    logger.debug(f'Writing temp fasta file to {fasta_filepath}')
-    with open(fasta_filepath, 'wb') as fasta_handle:
-        fasta_handle.write(fasta_contents)
-
-    # Load sequence table
-    sequence_table = load_fasta_sequence_table(fasta_filepath)
-
-    # Delete tmp dir
-    logger.debug(f'Removing temp dir {tmp_subdir}')
-    shutil.rmtree(tmp_subdir)
-
-    return sequence_table
-
-
-def load_sequence_table(sequence_data_filepath: str, tmp_dir: str = '.') -> pd.DataFrame:
+def load_sequence_table(sequence_data_filepath: str) -> pd.DataFrame:
     """
     Load a FastA or QZA-format DNA sequence file into a Pandas dataframe.
 
     :param sequence_data_filepath: Path to the DNA sequence file, in FastA or QZA format
-    :param tmp_dir: For QZA files, the base directory to extract the ZIP file to (will create a random subfolder)
     :return: DNA sequence info as a pandas DataFrame
     """
     try:
@@ -321,7 +302,7 @@ def load_sequence_table(sequence_data_filepath: str, tmp_dir: str = '.') -> pd.D
         # Attempt 2: QZA format
         logger.debug(f'FastA loading failed')
         logger.debug(f'Trying to load DNA sequences as QZA: {sequence_data_filepath}')
-        sequence_table = load_qza_sequence_table(sequence_data_filepath, tmp_dir=tmp_dir)
+        sequence_table = load_qza_sequence_table(sequence_data_filepath)
         logger.debug(f'QZA loading succeeded')
 
     return sequence_table

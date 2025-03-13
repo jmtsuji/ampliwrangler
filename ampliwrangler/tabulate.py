@@ -226,13 +226,12 @@ def add_taxonomy_to_feature_table(feature_table: pd.DataFrame, taxonomy_filepath
     return feature_table
 
 
-def add_sequences_to_feature_table(feature_table: pd.DataFrame, seq_filepath: str, tmp_dir: str = '.') -> pd.DataFrame:
+def add_sequences_to_feature_table(feature_table: pd.DataFrame, seq_filepath: str) -> pd.DataFrame:
     """
     Adds ASV/OTU sequences as the Sequence column to a QIIME2 feature table
 
     :param feature_table: QIIME2 FeatureTable[Frequency] artifact loaded as a pandas DataFrame
     :param seq_filepath: Path to the dna-sequences.fasta file output by the QIIME2 denoising/clustering step
-    :param tmp_dir: For QZA files, the base directory to extract the ZIP file to (will create a random subfolder)
     :return: QIIME2 FeatureTable[Frequency] artifact with representative sequences in the ReprSequences column
     """
     # Check if ReprSequence column already exists
@@ -243,7 +242,7 @@ def add_sequences_to_feature_table(feature_table: pd.DataFrame, seq_filepath: st
         raise error
 
     logger.debug('Loading and adding representative sequences')
-    seq_table = load_sequence_table(seq_filepath, tmp_dir=tmp_dir)
+    seq_table = load_sequence_table(seq_filepath)
 
     # Merge
     feature_table = pd.merge(feature_table, seq_table, how='left', on='Feature ID', validate='1:1')
@@ -389,6 +388,7 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
 
     # Load the feature table
     logger.debug('Loading feature table')
+    # TODO - consider exposing tmp_dir to the user
     feature_table = load_feature_table(feature_table_filepath, header_row=header_row,
                                        original_feature_id_colname=original_feature_id_colname,
                                        final_feature_id_colname='Feature ID')
