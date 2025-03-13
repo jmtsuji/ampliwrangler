@@ -13,7 +13,8 @@ import argparse
 import re
 
 import pandas as pd
-from ampliwrangler.utils import check_output_file, load_fasta_sequences
+from ampliwrangler.utils import check_output_file
+from ampliwrangler.load import load_fasta_sequences
 
 # GLOBAL VARIABLES
 # TODO - move these somewhere central

@@ -11,7 +11,8 @@ import os
 import logging
 import argparse
 
-from ampliwrangler.utils import check_output_file, load_feature_table
+from ampliwrangler.utils import check_output_file
+from ampliwrangler.load import load_feature_table
 
 logger = logging.getLogger(__name__)
 

@@ -75,7 +75,7 @@ elif [[ ! -d "${expected_outputs_dir}" ]]; then
   exit 1
 fi
 
-### Create the output dir
+### Make sure the output dir doesn't exist
 if [[ -d "${output_dir}" ]]; then
   echo "[ $(date -u) ]: ERROR: output directory '${output_dir}' already exists. Please specify an output dir that does not exist. Exiting..."
   exit 1
