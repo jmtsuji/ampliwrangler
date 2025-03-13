@@ -47,19 +47,19 @@ def main(args):
     logger.info(f'{os.path.basename(sys.argv[0])} count: done.')
 
 
-def process_sample_counts(input_filepath: str, output_filepath: str, min_count_filepath: str = None,
+def process_sample_counts(feature_table_filepath: str, output_filepath: str, min_count_filepath: str = None,
                           tmp_dir: str = '.'):
     """
     Load feature table, sum columns, and write output
 
-    :param input_filepath: path to the input QZA file
+    :param feature_table_filepath: path to the input FeatureTable (QZA, BIOM, or TSV format)
     :param output_filepath: path to the output TSV file with sample count data (or - = stdout)
     :param min_count_filepath: path to the output TXT file where just the min count info is stored
     :param tmp_dir: temporary directory for loading QZA data (a random subfolder will be temporarily created)
     :return: writes output files to output_filepath and optionally min_count_filepath
     """
-    # Load the BIOM table from within the QZA (ZIP) file
-    feature_data = load_feature_table(input_filepath, tmp_dir=tmp_dir)
+    feature_data = load_feature_table(feature_table_filepath, tmp_dir=tmp_dir)\
+        .set_index('Feature ID')
 
     # Sum columns
     logger.info('Summarizing FeatureTable counts')
