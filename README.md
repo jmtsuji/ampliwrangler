@@ -1,4 +1,6 @@
 # ampliwrangler
+[![DOI](https://zenodo.org/badge/947071183.svg)](https://doi.org/10.5281/zenodo.15018024)
+
 Simple command-line utilities for enhancing QIIME2-based amplicon analyses.
 
 Replacement for the [`qiime2-helpers`](https://github.com/jmtsuji/qiime2-helpers) repo.
@@ -91,7 +93,8 @@ ampliwrangler split \
 
 ## Citation
 If you benefit from using qiime2helpers, please cite the repo in a way similar to the following:
-> Tsuji, JM. ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. 2025. https://github.com/jmtsuji/ampliwrangler
+> Tsuji, JM. ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. 2025. 
+> Available at https://github.com/jmtsuji/ampliwrangler (doi:https://doi.org/10.5281/zenodo.15018024).
 
 ## Appendix 1: testing
 Run automated end-to-end tests as follows (in the command line, assuming you are in the git repo dir):
