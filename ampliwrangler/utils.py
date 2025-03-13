@@ -72,7 +72,7 @@ def load_fasta_sequences(fasta_filepath: str):
             yield record
 
 
-def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str = 'data', tmp_dir: str = '.') -> tuple:
+def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str = 'data', tmp_dir: str = '.') -> bytes:
     """
     Unpack a data file from a QIIME2 QZA archive.
 
@@ -80,7 +80,7 @@ def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str =
     :param target_filename: name of the target file inside the unpacked QZA
     :param qza_data_dir: expected path inside the QZA where the target file is stored
     :param tmp_dir: The base directory to extract the QZA file to (will create a random subfolder inside)
-    :return: tuple: path to the unzipped file and the path to the random temp subfolder
+    :return: contents of the unzipped file as bytes
     """
     logger.debug(f'Unpacking QZA file {qza_filepath}')
 
@@ -104,12 +104,7 @@ def unpack_from_qza(qza_filepath: str, target_filename: str, qza_data_dir: str =
             logger.error(error)
             raise error
 
-        # Extract the target file to a randomly generated subfolder in tmp_dir
-        tmp_subdir = os.path.join(tmp_dir, f'.{uuid.uuid4().hex}')
-        set_up_output_directory(tmp_subdir, overwrite=False)
-        extraction_path = qza_data.extract(target_filepath, path=tmp_subdir)
-        logger.debug(f'Extracted target file to {extraction_path}')
+        with qza_data.open(target_filepath) as target_handle:
+            target_contents = target_handle.read()
 
-    extracted_info = (extraction_path, tmp_subdir)
-
-    return extracted_info
+    return target_contents
