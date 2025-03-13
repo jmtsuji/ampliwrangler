@@ -114,13 +114,13 @@ ampliwrangler
 ```commandline
 usage: ampliwrangler [-h] [-V] {tabulate,count,split} ...
 
-Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.0
+Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.1
 
 positional arguments:
   {tabulate,count,split}
                         Available modules:
     tabulate            Creates a TSV-format QIIME2 feature table with overlaid taxonomy and sequence information.
-    count               Creates a tabular summary of the total read counts of all samples in a qiime2 feature table.
+    count               Creates a tabular summary of the total read counts of all samples in a feature table.
     split               Simple script to split a QIIME2 manifest file into multiple files based on the run ID column.
 
 options:
@@ -130,7 +130,7 @@ options:
 
 ampliwrangler tabulate
 ```commandline
-usage: ampliwrangler tabulate [-h] [-lf PATH] [-O] [-v] -f TSV [-o TSV] [-s FASTA] [-t TSV] [-n {percent,proportion}] [-S] [-R] [-P] [-u] [-C] [-N NAME]
+usage: ampliwrangler tabulate [-h] [-lf PATH] [-O] [-v] -f TSV [-o TSV] [-s FASTA] [-t TSV] [-n {percent,proportion}] [-S] [-R] [-P] [-u] [-C] [-H NUM] [-i NAME] [-I NAME]
 
 options:
   -h, --help            show this help message and exit
@@ -162,13 +162,17 @@ Optional table manipulation options:
   -u, --fill_unresolved_taxonomy
                         Optionally add Unresolved_[taxon] labels for blank taxonomy ranks. Requires --parse_taxonomy.
   -C, --sort_columns    Sort feature table columns by sample ID (alphabetically)
-  -N NAME, --feature_id_colname NAME
+  -H NUM, --header_row NUM
+                        The row to use as header for the input feature table (e.g., 0 = top row). [Default: "auto" = auto detect best row]
+  -i NAME, --original_feature_id_colname NAME
+                        The name of the Feature ID column of the input feature table. [Default: "auto" = auto detect]
+  -I NAME, --final_feature_id_colname NAME
                         The name of the first column of the output feature table. [Default: "Feature ID"]
 ```
 
 ampliwrangler count
 ```commandline
-usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i QZA [-o TSV] [-m TXT] [-T DIR]
+usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i TABLE [-o TABLE] [-m TXT] [-T DIR]
 
 options:
   -h, --help            show this help message and exit
@@ -180,9 +184,9 @@ Basic config settings:
   -v, --verbose         Enable verbose logging
 
 Input/output file options:
-  -i QZA, --input_filepath QZA
-                        The path to the input QZA FeatureTable file.
-  -o TSV, --output_filepath TSV
+  -i TABLE, --input_filepath TABLE
+                        The path to the input FeatureTable file, either QZA, BIOM, or TSV.
+  -o TABLE, --output_filepath TABLE
                         The path to the output TSV file. Will write to STDOUT (-) if nothing is provided.
   -m TXT, --min_count_filepath TXT
                         Optional path to write a single-line text file with the lowest count value in the dataset.
@@ -194,7 +198,7 @@ Workflow options:
 
 ampliwrangler split
 ```commandline
-usage: ampliwrangler split [-h] [-lf PATH] [-O] [-v] -i MANIFEST -o DIR [-r STR]
+usage: ampliwrangler split [-h] [-lf PATH] [-O] [-v] -i TSV -o DIR [-r STR]
 
 options:
   -h, --help            show this help message and exit
@@ -206,10 +210,10 @@ Basic config settings:
   -v, --verbose         Enable verbose logging
 
 Input/output file options:
-  -i MANIFEST, --input_filepath MANIFEST
+  -i TSV, --input_filepath TSV
                         The path to the input manifest file. Must match QIIME standards AND have a column with a unique ID for each sequencing run as specified in --run_id_column
   -o DIR, --output_dir DIR
-                        The directory where output files (named "manifest_[RUN_ID].tsv") will be saved. Will OVERWRITE existing files.
+                        The directory where output files (named "manifest_[RUN_ID].tsv") will be saved.
 
 Other params:
   -r STR, --run_id_column STR
