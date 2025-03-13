@@ -12,8 +12,8 @@ import logging
 import argparse
 import re
 
-from ampliwrangler.utils import load_fasta_sequences
 import pandas as pd
+from ampliwrangler.utils import check_output_file, load_fasta_sequences
 
 # GLOBAL VARIABLES
 # TODO - move these somewhere central
@@ -41,6 +41,8 @@ def main(args):
         logger.error(error)
         raise error
 
+    check_output_file(args.output_feature_table, overwrite=args.overwrite)
+
     # Startup messages
     logger.info(f'Running {os.path.basename(sys.argv[0])}')
     logger.debug('### SETTINGS ###')
@@ -55,6 +57,7 @@ def main(args):
     logger.debug(f'Fill in blank taxonomy ranks with Unresolved_[taxon]?: {args.fill_unresolved_taxonomy}')
     logger.debug(f'Sort table columns alphabetically?: {args.sort_columns}')
     logger.debug(f'Feature ID column name for the output table: {args.feature_id_colname}')
+    logger.debug(f'Overwrite existing files: {args.overwrite}')
     logger.debug(f'Verbose logging: {args.verbose}')
     logger.debug('################')
 

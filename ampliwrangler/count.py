@@ -16,6 +16,7 @@ import biom
 
 import zipfile as zf
 import pandas as pd
+from ampliwrangler.utils import check_output_file
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +33,18 @@ def main(args):
         logger.setLevel(logging.INFO)
         logging.getLogger('ampliwrangler.count').setLevel(logging.INFO)
 
+    check_output_file(args.output_filepath, overwrite=args.overwrite)
+    if args.min_count_filepath:
+        check_output_file(args.min_count_filepath, overwrite=args.overwrite)
+
     # Startup messages
     logger.info(f'Running {os.path.basename(sys.argv[0])}')
-    logger.info(f'Input filepath: {args.input_filepath}')
-    logger.info(f'Output filepath: {args.output_filepath}')
-    logger.info(f'Min count filepath: {args.min_count_filepath}')
-    logger.info(f'Temp directory: {args.tmp_dir}')
-    logger.info(f'Verbose logging: {args.verbose}')
+    logger.debug(f'Input filepath: {args.input_filepath}')
+    logger.debug(f'Output filepath: {args.output_filepath}')
+    logger.debug(f'Min count filepath: {args.min_count_filepath}')
+    logger.debug(f'Temp directory: {args.tmp_dir}')
+    logger.debug(f'Overwrite existing files: {args.overwrite}')
+    logger.debug(f'Verbose logging: {args.verbose}')
 
     process_sample_counts(args.input_filepath, args.output_filepath, args.min_count_filepath, args.tmp_dir)
 

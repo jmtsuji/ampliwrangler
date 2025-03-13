@@ -12,6 +12,7 @@ import logging
 import argparse
 
 import pandas as pd
+from ampliwrangler.utils import check_output_file
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +31,16 @@ def main(args):
 
     # Startup messages
     logger.info(f'Running {os.path.basename(sys.argv[0])}')
-    logger.info(f'Input filepath: {args.input_filepath}')
-    logger.info(f'Output directory: {args.output_dir}')
-    logger.info(f'Run ID column name: {args.run_id_column}')
+    logger.debug(f'Input filepath: {args.input_filepath}')
+    logger.debug(f'Output directory: {args.output_dir}')
+    logger.debug(f'Run ID column name: {args.run_id_column}')
+    logger.debug(f'Overwrite existing files: {args.overwrite}')
 
-    split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column)
+    split_manifest_by_run_id(args.input_filepath, args.output_dir, args.run_id_column, args.overwrite)
 
 
-def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column: str = 'run_ID'):
+def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column: str = 'run_ID',
+                             overwrite: bool = False):
     """
     Splits an input manifest file by run based on values in the run ID column.
     Writes outputs as individual manifest files.
@@ -45,6 +48,7 @@ def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column
     :param input_filepath: path to the input manifest file
     :param output_dir: path to the directory where manifest files, split by run ID, will be written
     :param run_id_column: name of the column in the input manifest file with run IDs
+    :param overwrite: whether or not to overwrite any existing files
     :return: writes output files to output_dir
     """
     # Load manifest file
@@ -66,7 +70,8 @@ def split_manifest_by_run_id(input_filepath: str, output_dir: str, run_id_column
     for run_id in unique_run_ids:
         output_filename = f'manifest_{run_id}.tsv'
         output_filepath = os.path.join(output_dir, output_filename)
-        # TODO - check if output_filepath already exists and do not write output unless --force is specified
+
+        check_output_file(output_filepath, overwrite=overwrite)
         logger.info(f'Writing run "{run_id}" to file "{output_filename}".')
 
         single_run_table = manifest_table[manifest_table[run_id_column] == run_id]

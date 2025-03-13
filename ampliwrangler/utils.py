@@ -29,7 +29,9 @@ def check_output_file(output_filepath: str, overwrite: bool = False):
         elif overwrite is True:
             logger.warning(f'Output file already exists: "{output_filepath}". File will be overwritten.')
         else:
-            raise ValueError(f'overwrite must be True or False, but you provided "{overwrite}"')
+            error = ValueError(f'overwrite must be True or False, but you provided "{overwrite}"')
+            logger.error(error)
+            raise error
 
 
 def set_up_output_directory(output_directory_filepath: str, overwrite: bool = False):
