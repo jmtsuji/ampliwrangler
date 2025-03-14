@@ -388,7 +388,6 @@ def generate_combined_feature_table(feature_table_filepath: str, sequence_filepa
 
     # Load the feature table
     logger.debug('Loading feature table')
-    # TODO - consider exposing tmp_dir to the user
     feature_table = load_feature_table(feature_table_filepath, header_row=header_row,
                                        original_feature_id_colname=original_feature_id_colname,
                                        final_feature_id_colname='Feature ID')

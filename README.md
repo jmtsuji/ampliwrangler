@@ -195,7 +195,7 @@ Optional table manipulation options:
 
 ampliwrangler count
 ```commandline
-usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i TABLE [-c TABLE] [-m TXT] [-T DIR]
+usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i TABLE [-c TABLE] [-m TXT]
 
 options:
   -h, --help            show this help message and exit
@@ -213,10 +213,6 @@ Input/output file options:
                         Optional path to write output counts per sample in TSV format. Provide "-" to write to stdout.
   -m TXT, --output_min_count_filepath TXT
                         Optional path to write a single-line text file with the lowest count value in the dataset. Provide "-" to write to stdout.
-
-Workflow options:
-  -T DIR, --tmp_dir DIR
-                        Optional path to the temporary directory used for unpacking the QZA. A random subdirectory will be temporarily created here [default: .].
 ```
 
 ampliwrangler split

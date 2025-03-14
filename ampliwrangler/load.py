@@ -8,15 +8,12 @@ Copyright: Jackson M. Tsuji, 2025
 import logging
 import os
 import io
-import shutil
-import uuid
+import h5py
 import biom
 
 import pandas as pd
 import zipfile as zf
 from Bio import SeqIO
-
-from ampliwrangler.utils import set_up_output_directory
 
 logger = logging.getLogger(__name__)
 
@@ -131,14 +128,14 @@ def load_tsv_feature_table(tsv_filepath: str, header_row='auto', original_featur
     return feature_data
 
 
-def load_biom_feature_table(biom_filepath: str, feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
+def load_biom_feature_table(biom_file, feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
     """
     Load a biom-format feature table as a pandas DataFrame
-    :param biom_filepath: path to the biom-format file to load
+    :param biom_file: path to the biom-format file to load (str) or hdf5 File object
     :param feature_id_colname: name to give to the feature ID column after loading.
     :return: FeatureTable data as a pandas DataFrame
     """
-    feature_data = biom.load_table(biom_filepath)\
+    feature_data = biom.load_table(biom_file)\
         .to_dataframe()\
         .reset_index(names=feature_id_colname)
 
@@ -148,37 +145,26 @@ def load_biom_feature_table(biom_filepath: str, feature_id_colname: str = 'Featu
     return feature_data
 
 
-def load_qza_feature_table(qza_filepath: str, feature_id_colname: str = 'Feature ID',
-                           tmp_dir: str = '.') -> pd.DataFrame:
+def load_qza_feature_table(qza_filepath: str, feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
     """
     Load a BIOM file from a QIIME2 QZA archive as a Pandas dataframe.
 
     :param qza_filepath: Path to the QIIME2 QZA archive, FeatureTable[Frequency] format
     :param feature_id_colname: name to give to the feature ID column after loading.
-    :param tmp_dir: The base directory to extract the ZIP file to (will create a random subfolder)
     :return: FeatureTable data as a pandas DataFrame
     """
-    # Load the biom file contents in binary, then write to a temp file that biom.load_table can open
+    # Load the biom file contents in binary
     biom_contents = unpack_from_qza(qza_filepath, target_filename='feature-table.biom')
-    tmp_subdir = os.path.join(tmp_dir, f'.{uuid.uuid4().hex}')
-    set_up_output_directory(tmp_subdir, overwrite=False)
-    biom_path = os.path.join(tmp_subdir, 'feature-table.biom')
-    logger.debug(f'Writing temp biom file to {biom_path}')
-    with open(biom_path, 'wb') as biom_handle:
-        biom_handle.write(biom_contents)
 
-    # Load biom file
-    feature_data = load_biom_feature_table(biom_path, feature_id_colname=feature_id_colname)
-
-    # Delete tmp dir
-    logger.debug(f'Removing temp dir {tmp_subdir}')
-    shutil.rmtree(tmp_subdir)
+    # Convert to a file object, then load the biom table
+    biom_contents_parsable = h5py.File(io.BytesIO(biom_contents))
+    feature_data = load_biom_feature_table(biom_contents_parsable, feature_id_colname=feature_id_colname)
 
     return feature_data
 
 
 def load_feature_table(feature_table_filepath, header_row='auto', original_feature_id_colname: str = 'auto',
-                       final_feature_id_colname: str = 'Feature ID', tmp_dir: str = '.') -> pd.DataFrame:
+                       final_feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
     """
     Generalized function to load a feature table regardless of input format
 
@@ -192,8 +178,6 @@ def load_feature_table(feature_table_filepath, header_row='auto', original_featu
     :param final_feature_id_colname: final name to give to the feature ID column, for standardization. Applies to all
                                      input file types. For TSV format files, if None is provided, then the feature ID
                                      column name is kept as-is.
-    :param tmp_dir: for QZA format files, optionally provide the base directory to extract the ZIP file to (will create
-                     a random subfolder here)
     :return: FeatureTable data as a pandas DataFrame
     """
     try:
@@ -214,8 +198,7 @@ def load_feature_table(feature_table_filepath, header_row='auto', original_featu
             # Third try: QZA format
             logger.debug(f'BIOM loading failed')
             logger.debug(f'Trying to load FeatureTable as QZA: {feature_table_filepath}')
-            feature_data = load_qza_feature_table(feature_table_filepath, feature_id_colname=final_feature_id_colname,
-                                                  tmp_dir=tmp_dir,)
+            feature_data = load_qza_feature_table(feature_table_filepath, feature_id_colname=final_feature_id_colname)
             logger.debug(f'QZA loading succeeded')
 
     return feature_data
@@ -270,11 +253,11 @@ def load_qza_sequence_table(qza_filepath: str) -> pd.DataFrame:
     :param qza_filepath: path to the QZA DNA sequences file
     :return: DNA sequence info as a pandas DataFrame
     """
-    # Load the FastA file contents in binary, then use this to load the sequence table
+    # Load the FastA file contents in binary, then convert to a file-like object
     fasta_contents = unpack_from_qza(qza_filepath, target_filename='dna-sequences.fasta')
     parsable_fasta_contents = io.StringIO(fasta_contents.decode())
 
-    # Load sequence table
+    # Load sequence table using the file-like object
     fasta_ids = []
     fasta_seqs = []
     for record in SeqIO.parse(parsable_fasta_contents, 'fasta'):

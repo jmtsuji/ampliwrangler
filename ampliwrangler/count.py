@@ -45,28 +45,24 @@ def main(args):
     logger.debug(f'Input filepath: {args.input_filepath}')
     logger.debug(f'Counts-per-sample filepath: {args.output_counts_filepath}')
     logger.debug(f'Min count filepath: {args.output_min_count_filepath}')
-    logger.debug(f'Temp directory: {args.tmp_dir}')
     logger.debug(f'Overwrite existing files: {args.overwrite}')
     logger.debug(f'Verbose logging: {args.verbose}')
 
-    process_sample_counts(args.input_filepath, args.output_counts_filepath, args.output_min_count_filepath,
-                          args.tmp_dir)
+    process_sample_counts(args.input_filepath, args.output_counts_filepath, args.output_min_count_filepath)
 
     logger.info(f'{os.path.basename(sys.argv[0])} count: done.')
 
 
-def process_sample_counts(feature_table_filepath: str, counts_filepath: str = None, min_count_filepath: str = None,
-                          tmp_dir: str = '.'):
+def process_sample_counts(feature_table_filepath: str, counts_filepath: str = None, min_count_filepath: str = None):
     """
     Load feature table, sum columns, and write output
 
     :param feature_table_filepath: path to the input FeatureTable (QZA, BIOM, or TSV format)
     :param counts_filepath: path to an output TSV file with sample count data (or - = stdout)
     :param min_count_filepath: path to an output TXT file where just the min count info is stored (or - = stdout)
-    :param tmp_dir: temporary directory for loading QZA data (a random subfolder will be temporarily created)
     :return: writes output files to output_filepath and optionally min_count_filepath
     """
-    feature_data = load_feature_table(feature_table_filepath, tmp_dir=tmp_dir)\
+    feature_data = load_feature_table(feature_table_filepath)\
         .set_index('Feature ID')
 
     # Sum columns
@@ -121,7 +117,6 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     subparser.set_defaults(count=True)
 
     file_settings = subparser.add_argument_group('Input/output file options')
-    workflow_settings = subparser.add_argument_group('Workflow options')
 
     file_settings.add_argument('-i', '--input_filepath', metavar='TABLE', required=True,
                                help='The path to the input FeatureTable file, either QZA, BIOM, or TSV.')
@@ -131,9 +126,5 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     file_settings.add_argument('-m', '--output_min_count_filepath', metavar='TXT', required=False, default=None,
                                help='Optional path to write a single-line text file with the lowest count value in the '
                                     'dataset. Provide "-" to write to stdout.')
-
-    workflow_settings.add_argument('-T', '--tmp_dir', metavar='DIR', required=False, default='.',
-                                   help='Optional path to the temporary directory used for unpacking the QZA. A random '
-                                        'subdirectory will be temporarily created here [default: .].')
 
     return subparser
