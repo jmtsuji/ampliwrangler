@@ -5,6 +5,13 @@ Simple command-line utilities for enhancing QIIME2-based amplicon analyses.
 
 Replacement for the [`qiime2-helpers`](https://github.com/jmtsuji/qiime2-helpers) repo.
 
+## About
+When working with QIIME2 for amplicon analysis, I often run into steps in the pipeline that I wished could be
+enhanced or streamlined. Ampliwrangler exists to fill in some of those gaps to make amplicon analysis smoother. Modules
+of ampliwrangler can directly interface with QIIME2 and support QZA format files along with exported TSV/BIOM/FASTA file
+types. The hope is that ampliwrangler can be used either during a QIIME2 analysis or post-analysis to improve your
+amplicon analysis experience!
+
 ## Installation
 `ampliwrangler` can be installed on Linux or MacOS as follows:
 
@@ -33,11 +40,11 @@ ampliwrangler -h
 ```
 
 ## Included modules
-`ampliwrangler` consists of several loosely related modules that help clean up or speed up QIIME2-based amplicon
+`ampliwrangler` consists of several loosely related modules that help speed up or enhance QIIME2-based amplicon
 analyses:
 - tabulate: feature table manipulations, including adding taxonomy and sequence info as "metadata" to the table for ease
-  of viewing
-- count: get the total read counts for all samples in feature table (or just the min count) - this is helpful for
+  of viewing downstream
+- count: get the total read counts for all samples in the feature table (or just the min count) - this is helpful for
   quickly seeing what read count to rarefy to.
 - split: split a manifest file by a metadata column value such as sequencing run ID. It's recommended to run DADA2 (a
   sequence denoising tool) on one sequencing run at a time, so it's helpful to be able to split the manifest file this
@@ -47,7 +54,7 @@ Basic usage instructions are included below. See full usage instructions for eac
 this README.
 
 ### ampliwrangler tabulate
-Adds taxonomy and representative sequence information onto a Feature Table.
+Manipulate feature tables, including adding taxonomy and sequence information as "metadata".
 
 Example (test data in repo):
 ```bash
@@ -60,10 +67,20 @@ ampliwrangler tabulate \
   -t "${input_dir}/taxonomy.tsv" \
   -o "feature-table-with-metadata.tsv" \
   --parse_taxonomy
+
+# Direct use of QZA files is also supported!
+ampliwrangler tabulate \
+  -f "${input_dir}/feature-table.qza" \
+  -s "${input_dir}/dna-sequences.qza" \
+  -t "${input_dir}/taxonomy.qza" \
+  -o "feature-table-with-metadata.tsv" \
+  --parse_taxonomy
 ```
+The tabuilate module is quite feature rich. Other functions, including normalization of feature table data, renaming
+ASVs, sorting by taxonomy, and so on are detailed in the help statement in Appendix 2 below.
 
 ### ampliwrangler count
-Summarizes total counts per sample for a QZA `FeatureCounts[Frequency]` archive. 
+Summarize total counts per sample for a feature table.
 This script is nice if trying to decide how to rarefy your data, for example.
 
 Example (test data in repo):
@@ -73,8 +90,12 @@ input_dir="testing/count/inputs"
 
 ampliwrangler count \
   -i "${input_dir}/feature-table.qza" \
-  -o "sample-counts.tsv" \
+  -c "sample-counts.tsv" \
   -m "min-sample-count.txt"
+  
+# Or just write the minimum count value (for rarefaction) to stdout
+min_sample_count=$(ampliwrangler count -i "${input_dir}/feature-table.qza" -m -)
+echo ${min_sample_count} # to see the min sample count
 ```
 
 ### ampliwrangler split
@@ -117,7 +138,7 @@ ampliwrangler
 ```commandline
 usage: ampliwrangler [-h] [-V] {tabulate,count,split} ...
 
-Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.2
+Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.3
 
 positional arguments:
   {tabulate,count,split}
@@ -133,7 +154,7 @@ options:
 
 ampliwrangler tabulate
 ```commandline
-usage: ampliwrangler tabulate [-h] [-lf PATH] [-O] [-v] -f TSV [-o TSV] [-s FASTA] [-t TSV] [-n {percent,proportion}] [-S] [-R] [-P] [-u] [-C] [-H NUM] [-i NAME] [-I NAME]
+usage: ampliwrangler tabulate [-h] [-lf PATH] [-O] [-v] -f TABLE [-o TABLE] [-s SEQ] [-t TAX] [-n {percent,proportion}] [-S] [-R] [-P] [-u] [-C] [-H NUM] [-i NAME] [-I NAME]
 
 options:
   -h, --help            show this help message and exit
@@ -145,15 +166,14 @@ Basic config settings:
   -v, --verbose         Enable verbose logging
 
 Input/output file options:
-  -f TSV, --feature_table TSV
-                        The path to the input TSV feature table file.
-  -o TSV, --output_feature_table TSV
+  -f TABLE, --feature_table TABLE
+                        The path to the input feature table file. TSV, BIOM, or QZA file types are supported.
+  -o TABLE, --output_feature_table TABLE
                         The path to the output TSV feature table. Will write to STDOUT (-) if nothing is provided.
-  -s FASTA, --sequences FASTA
-                        The path to the input FastA ASV/OTU sequence file. Sequences will be added as the "Sequences" column. You can optionally omit this flag and not have sequences added to the
-                        table.
-  -t TSV, --taxonomy TSV
-                        The path to the input taxonomy file. Taxonomy will be added as the "Taxonomy" column. You can optionally omit this flag and not have taxonomy added to the table.
+  -s SEQ, --sequences SEQ
+                        The path to the input ASV/OTU sequence file. Sequences will be added as the "Sequences" column. You can optionally omit this flag and not have sequences added to the table. FastA and QZA file types are supported.
+  -t TAX, --taxonomy TAX
+                        The path to the input taxonomy file. Taxonomy will be added as the "Taxonomy" column. You can optionally omit this flag and not have taxonomy added to the table. TSV (qiime2 format) or QZA file types are supported.
 
 Optional table manipulation options:
   -n {percent,proportion}, --normalize {percent,proportion}
@@ -175,7 +195,7 @@ Optional table manipulation options:
 
 ampliwrangler count
 ```commandline
-usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i TABLE [-o TABLE] [-m TXT] [-T DIR]
+usage: ampliwrangler count [-h] [-lf PATH] [-O] [-v] -i TABLE [-c TABLE] [-m TXT] [-T DIR]
 
 options:
   -h, --help            show this help message and exit
@@ -189,10 +209,10 @@ Basic config settings:
 Input/output file options:
   -i TABLE, --input_filepath TABLE
                         The path to the input FeatureTable file, either QZA, BIOM, or TSV.
-  -o TABLE, --output_filepath TABLE
-                        The path to the output TSV file. Will write to STDOUT (-) if nothing is provided.
-  -m TXT, --min_count_filepath TXT
-                        Optional path to write a single-line text file with the lowest count value in the dataset.
+  -c TABLE, --output_counts_filepath TABLE
+                        Optional path to write output counts per sample in TSV format. Provide "-" to write to stdout.
+  -m TXT, --output_min_count_filepath TXT
+                        Optional path to write a single-line text file with the lowest count value in the dataset. Provide "-" to write to stdout.
 
 Workflow options:
   -T DIR, --tmp_dir DIR

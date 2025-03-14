@@ -459,19 +459,20 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     file_settings = subparser.add_argument_group('Input/output file options')
     table_settings = subparser.add_argument_group('Optional table manipulation options')
 
-    file_settings.add_argument('-f', '--feature_table', metavar='TSV', required=True,
-                               help='The path to the input TSV feature table file.')
-    file_settings.add_argument('-o', '--output_feature_table', metavar='TSV', required=False, default='-',
+    file_settings.add_argument('-f', '--feature_table', metavar='TABLE', required=True,
+                               help='The path to the input feature table file. TSV, BIOM, or QZA file types are '
+                                    'supported.')
+    file_settings.add_argument('-o', '--output_feature_table', metavar='TABLE', required=False, default='-',
                                help='The path to the output TSV feature table. Will write to STDOUT (-) if nothing '
                                     'is provided.')
-    file_settings.add_argument('-s', '--sequences', metavar='FASTA', required=False, default=None,
-                               help='The path to the input FastA ASV/OTU sequence file. Sequences will be added as the '
+    file_settings.add_argument('-s', '--sequences', metavar='SEQ', required=False, default=None,
+                               help='The path to the input ASV/OTU sequence file. Sequences will be added as the '
                                     '"Sequences" column. You can optionally omit this flag and not have sequences '
-                                    'added to the table.')
-    file_settings.add_argument('-t', '--taxonomy', metavar='TSV', required=False, default=None,
+                                    'added to the table. FastA and QZA file types are supported.')
+    file_settings.add_argument('-t', '--taxonomy', metavar='TAX', required=False, default=None,
                                help='The path to the input taxonomy file. Taxonomy will be added as the "Taxonomy" '
                                     'column. You can optionally omit this flag and not have taxonomy added to the '
-                                    'table.')
+                                    'table. TSV (qiime2 format) or QZA file types are supported.')
 
     table_settings.add_argument('-n', '--normalize', required=False, choices=['percent', 'proportion'],
                                 help='Optionally normalize each sample by the desired normalization method (e.g., to '
@@ -499,7 +500,5 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
                                 default='Feature ID',
                                 help='The name of the first column of the output feature table. [Default: '
                                      '"Feature ID"]')
-    # TODO - add option to auto-detect if a QZA file is provided instead of the unpackaged file. Deal with the
-    #  conversions. Same for if a BIOM file is provided.
 
     return subparser
