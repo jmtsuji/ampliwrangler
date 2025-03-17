@@ -12,6 +12,7 @@ import logging
 import argparse
 
 import pandas as pd
+from ampliwrangler.params import VERSION
 from ampliwrangler.utils import check_output_file
 
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ def main(args):
         logging.getLogger('ampliwrangler.split').setLevel(logging.INFO)
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])} split')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} split, version {VERSION}')
     logger.debug(f'Input filepath: {args.input_filepath}')
     logger.debug(f'Output directory: {args.output_dir}')
     logger.debug(f'Run ID column name: {args.run_id_column}')

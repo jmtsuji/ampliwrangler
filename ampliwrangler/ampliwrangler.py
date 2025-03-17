@@ -10,8 +10,7 @@ import sys
 import logging
 import argparse
 
-from importlib.metadata import version, PackageNotFoundError
-
+from ampliwrangler.params import VERSION
 from ampliwrangler.utils import check_output_file, set_up_output_directory
 from ampliwrangler.tabulate import main as tabulate_main
 from ampliwrangler.tabulate import subparse_cli as subparse_tabulate_cli
@@ -43,12 +42,7 @@ def main():
     logger.addHandler(stream_handler)
 
     if (hasattr(args, 'version')) and (args.version is True):
-        try:
-            ampliwrangler_version = version('ampliwrangler')
-        except PackageNotFoundError:
-            ampliwrangler_version = 'unknown'
-
-        print(f'Version: {ampliwrangler_version}')
+        print(f'Version: {VERSION}')
         sys.exit(0)
 
     if (hasattr(args, 'verbose')) and (args.verbose is True):
@@ -94,14 +88,9 @@ def parse_cli():
     Parses the CLI arguments.
     :return: An argparse parser object.
     """
-    try:
-        ampliwrangler_version = version('ampliwrangler')
-    except PackageNotFoundError:
-        ampliwrangler_version = 'unknown'
-
     cli_title = (f'Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses.\n'
                  f'Copyright Jackson M. Tsuji, 2025.\n'
-                 f'Version: {ampliwrangler_version}')
+                 f'Version: {VERSION}')
     parser = argparse.ArgumentParser(description=cli_title)
     parser.add_argument('-V', '--version', required=False, action='store_true', help='Print tool version and exit')
 

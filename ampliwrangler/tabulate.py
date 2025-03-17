@@ -13,12 +13,9 @@ import argparse
 import re
 
 import pandas as pd
+from ampliwrangler.params import TAXONOMY_RANKS, DEFAULT_METADATA_COLUMNS, VERSION
 from ampliwrangler.utils import check_output_file
-from ampliwrangler.load import load_feature_table, load_taxonomy, load_sequence_table
-
-# GLOBAL VARIABLES
-# TODO - move these somewhere central
-TAXONOMY_RANKS = ['Domain', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species']
+from ampliwrangler.load import load_feature_table, load_taxonomy, load_sequence_table, mask_metadata_columns
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +42,7 @@ def main(args):
     check_output_file(args.output_feature_table, overwrite=args.overwrite)
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])} tabulate')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} tabulate, version {VERSION}')
     logger.debug('### SETTINGS ###')
     logger.debug(f'Feature table filepath: {args.feature_table}')
     logger.debug(f'Representative sequences filepath: {args.sequences}')
@@ -88,34 +85,6 @@ def main(args):
     logger.info(f'{os.path.basename(sys.argv[0])} tabulate: done.')
 
 
-def mask_metadata_columns(feature_table: pd.DataFrame, metadata_columns: list = 'default') -> pd.DataFrame:
-    """
-    Set any detected metadata (non-count / Feature ID) columns as indices
-
-    :param feature_table: QIIME2 FeatureTable[Frequency] artifact loaded as a pandas DataFrame
-    :param metadata_columns: list of column names to consider as metadata. If 'default' (string), then will
-                             search for ['Feature ID', 'Taxonomy', 'Sequence'] + TAXONOMY_RANKS
-    """
-
-    default_metadata_cols = ['Feature ID', 'Taxonomy', 'Sequence'] + TAXONOMY_RANKS
-    if metadata_columns == 'default':
-        metadata_columns = default_metadata_cols
-
-    # A copy of the feature table is made just in case pandas changes the main table object when these edits are made
-    feature_table_masked = feature_table.copy(deep=True)
-
-    mask_columns = []
-    for metadata_column in metadata_columns:
-        if metadata_column in feature_table_masked.columns:
-            mask_columns.append(metadata_column)
-
-    if len(mask_columns) > 0:
-        logger.debug(f'Masking metadata columns: {mask_columns}')
-        feature_table_masked = feature_table_masked.set_index(mask_columns)
-
-    return feature_table_masked
-
-
 def sort_feature_table_columns(feature_table: pd.DataFrame, sort_sample_columns: bool = False,
                                metadata_columns: list = 'default') -> pd.DataFrame:
     """
@@ -126,9 +95,9 @@ def sort_feature_table_columns(feature_table: pd.DataFrame, sort_sample_columns:
     :param metadata_columns: list of column names to consider as metadata. If 'default' (string), then will
                              search for ['Taxonomy'] + TAXONOMY_RANKS + ['Sequence']
     """
-    default_metadata_cols = ['Taxonomy'] + TAXONOMY_RANKS + ['Sequence']
     if metadata_columns == 'default':
-        metadata_columns = default_metadata_cols
+        metadata_columns = DEFAULT_METADATA_COLUMNS
+        metadata_columns.remove('Feature ID')
 
     available_metadata_columns = []
     sample_columns = []
@@ -268,12 +237,9 @@ def sort_feature_table(feature_table: pd.DataFrame) -> pd.DataFrame:
             sort_column_id_checked = True
 
     logger.debug('Sorting feature table by maximum count of each feature')
-    feature_table = mask_metadata_columns(feature_table)
-    # Get max value per feature
-    feature_table[sort_column_id] = feature_table.max(axis=1)
-    feature_table = feature_table.reset_index()
-
-    feature_table = feature_table.sort_values(by=[sort_column_id, 'Feature ID'], ascending=[False, True])\
+    max_counts_per_feature = list(mask_metadata_columns(feature_table).max(axis=1))
+    feature_table[sort_column_id] = max_counts_per_feature
+    feature_table = feature_table.sort_values(by=sort_column_id, ascending=False)\
         .drop(columns=sort_column_id)
 
     return feature_table
@@ -460,7 +426,8 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
 
     file_settings.add_argument('-f', '--feature_table', metavar='TABLE', required=True,
                                help='The path to the input feature table file. TSV, BIOM, or QZA file types are '
-                                    'supported.')
+                                    'supported. Non-compressed TSV files can also be provided as stdin by '
+                                    'specifying "-".')
     file_settings.add_argument('-o', '--output_feature_table', metavar='TABLE', required=False, default='-',
                                help='The path to the output TSV feature table. Will write to STDOUT (-) if nothing '
                                     'is provided.')

@@ -7,6 +7,7 @@ Copyright: Jackson M. Tsuji, 2025
 # Imports
 import logging
 import os
+import sys
 import io
 import h5py
 import biom
@@ -14,6 +15,8 @@ import biom
 import pandas as pd
 import zipfile as zf
 from Bio import SeqIO
+
+from ampliwrangler.params import DEFAULT_METADATA_COLUMNS, ACCEPTABLE_FEATURE_ID_COLUMN_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +70,11 @@ def validate_feature_table(feature_data: pd.DataFrame, original_feature_id_colna
                                      as-is if None is provided.
     :return: FeatureTable data as a pandas DataFrame
     """
-    acceptable_feature_id_column_names = ['Feature ID', '#OTU ID']
-
     first_column_name = feature_data.columns[0]
     if original_feature_id_colname == 'auto':
-        if first_column_name not in acceptable_feature_id_column_names:
+        if first_column_name not in ACCEPTABLE_FEATURE_ID_COLUMN_NAMES:
             error = ValueError(f'First column of FeatureTable is "{first_column_name}", not one of '
-                               f'{acceptable_feature_id_column_names}')
+                               f'{ACCEPTABLE_FEATURE_ID_COLUMN_NAMES}')
             logger.error(error)
             raise error
     else:
@@ -96,6 +97,32 @@ def validate_feature_table(feature_data: pd.DataFrame, original_feature_id_colna
     return feature_data
 
 
+def mask_metadata_columns(feature_table: pd.DataFrame, metadata_columns: list = 'default') -> pd.DataFrame:
+    """
+    Set any detected metadata (non-count / Feature ID) columns as indices
+
+    :param feature_table: QIIME2 FeatureTable[Frequency] artifact loaded as a pandas DataFrame
+    :param metadata_columns: list of column names to consider as metadata. If 'default' (string), then will
+                             search for ['Feature ID', 'Taxonomy', 'Sequence'] + TAXONOMY_RANKS
+    """
+    if metadata_columns == 'default':
+        metadata_columns = DEFAULT_METADATA_COLUMNS
+
+    # A copy of the feature table is made just in case pandas changes the main table object when these edits are made
+    feature_table_masked = feature_table.copy(deep=True)
+
+    mask_columns = []
+    for metadata_column in metadata_columns:
+        if metadata_column in feature_table_masked.columns:
+            mask_columns.append(metadata_column)
+
+    if len(mask_columns) > 0:
+        logger.debug(f'Masking metadata columns: {mask_columns}')
+        feature_table_masked = feature_table_masked.set_index(mask_columns)
+
+    return feature_table_masked
+
+
 def load_tsv_feature_table(tsv_filepath: str, header_row='auto', original_feature_id_colname: str = 'auto',
                            final_feature_id_colname: str = 'Feature ID') -> pd.DataFrame:
     """
@@ -110,15 +137,28 @@ def load_tsv_feature_table(tsv_filepath: str, header_row='auto', original_featur
     :return: FeatureTable data as a pandas DataFrame
     """
     if header_row == 'auto':
-        # Roughly check if the FeatureTable has a first header line or not
-        with open(tsv_filepath, 'r') as input_handle:
-            first_line = input_handle.readline()
+        feature_data = pd.read_csv(tsv_filepath, sep='\t', header=0)
 
-        if first_line == '# Constructed from biom file\n':
-            feature_data = pd.read_csv(tsv_filepath, sep='\t', header=1)
-        else:
-            feature_data = pd.read_csv(tsv_filepath, sep='\t', header=0)
+        # Clean up the loaded table if it seems that the first row is a BIOM header
+        if (len(feature_data.columns) == 1) & (feature_data.columns[0] == '# Constructed from biom file'):
+            logger.debug(f'First line of the input table is the biom header; will skip')
+            feature_data = feature_data.reset_index()
+            column_names = list(feature_data.iloc[0])
+            # TODO - one consequence of this code is that the columns types will not be correct. I partially correct
+            #        for this below, but it is a bit hacky. Does a more elegant solution exist?
+            #        I considered just reloading the table with header=1 and/or just checking the first line via
+            #        readlines(), but these solutions break when using sys.stdin.
+            feature_data = feature_data.iloc[1:]
+            feature_data.columns = column_names
 
+            # Make sure all sample columns have numeric contents
+            # TODO - it might be redundant to run mask_metadata_columns given that error handling is already done below
+            for sample_column_name in mask_metadata_columns(feature_data).columns:
+                try:
+                    feature_data[sample_column_name] = feature_data[sample_column_name].apply(float)
+                except ValueError:
+                    # E.g., ValueError: could not convert string to float
+                    logger.debug(f'Skipping numeric conversion for column {sample_column_name}')
     else:
         feature_data = pd.read_csv(tsv_filepath, sep='\t', header=header_row)
 
@@ -180,6 +220,9 @@ def load_feature_table(feature_table_filepath, header_row='auto', original_featu
                                      column name is kept as-is.
     :return: FeatureTable data as a pandas DataFrame
     """
+    if feature_table_filepath == "-":
+        feature_table_filepath = sys.stdin
+
     try:
         # First try: assume TSV format
         logger.debug(f'Trying to load FeatureTable as TSV: {feature_table_filepath}')

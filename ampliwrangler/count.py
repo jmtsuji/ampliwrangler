@@ -11,6 +11,7 @@ import os
 import logging
 import argparse
 
+from ampliwrangler.params import VERSION
 from ampliwrangler.utils import check_output_file
 from ampliwrangler.load import load_feature_table
 
@@ -41,7 +42,7 @@ def main(args):
         raise error
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])} count')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} count, version {VERSION}')
     logger.debug(f'Input filepath: {args.input_filepath}')
     logger.debug(f'Counts-per-sample filepath: {args.output_counts_filepath}')
     logger.debug(f'Min count filepath: {args.output_min_count_filepath}')
