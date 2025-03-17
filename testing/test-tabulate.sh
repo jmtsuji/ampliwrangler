@@ -122,8 +122,9 @@ check_md5s "${test_ID}"
 ## Test 3
 test_ID="03_simple"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
-ampliwrangler tabulate \
-  -f "${input_dir}/feature-table.tsv" \
+cat "${input_dir}/feature-table.tsv" | \
+  ampliwrangler tabulate \
+  -f "-" \
   -I "#OTU ID" \
   -R \
   -v \

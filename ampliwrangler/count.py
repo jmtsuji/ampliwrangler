@@ -11,6 +11,7 @@ import os
 import logging
 import argparse
 
+from ampliwrangler.params import VERSION
 from ampliwrangler.utils import check_output_file
 from ampliwrangler.load import load_feature_table
 
@@ -29,36 +30,40 @@ def main(args):
         logger.setLevel(logging.INFO)
         logging.getLogger('ampliwrangler.count').setLevel(logging.INFO)
 
-    check_output_file(args.output_filepath, overwrite=args.overwrite)
-    if args.min_count_filepath:
-        check_output_file(args.min_count_filepath, overwrite=args.overwrite)
+    if args.output_counts_filepath:
+        check_output_file(args.output_counts_filepath, overwrite=args.overwrite)
+    if args.output_min_count_filepath:
+        check_output_file(args.output_min_count_filepath, overwrite=args.overwrite)
+
+    if (args.output_counts_filepath == "-") & (args.output_min_count_filepath == "-"):
+        error = RuntimeError('Cannot supply "-" (stdout) to both --output_counts_filepath and '
+                             '--output_min_count_filepath')
+        logger.error(error)
+        raise error
 
     # Startup messages
-    logger.info(f'Running {os.path.basename(sys.argv[0])} count')
+    logger.info(f'Running {os.path.basename(sys.argv[0])} count, version {VERSION}')
     logger.debug(f'Input filepath: {args.input_filepath}')
-    logger.debug(f'Output filepath: {args.output_filepath}')
-    logger.debug(f'Min count filepath: {args.min_count_filepath}')
-    logger.debug(f'Temp directory: {args.tmp_dir}')
+    logger.debug(f'Counts-per-sample filepath: {args.output_counts_filepath}')
+    logger.debug(f'Min count filepath: {args.output_min_count_filepath}')
     logger.debug(f'Overwrite existing files: {args.overwrite}')
     logger.debug(f'Verbose logging: {args.verbose}')
 
-    process_sample_counts(args.input_filepath, args.output_filepath, args.min_count_filepath, args.tmp_dir)
+    process_sample_counts(args.input_filepath, args.output_counts_filepath, args.output_min_count_filepath)
 
     logger.info(f'{os.path.basename(sys.argv[0])} count: done.')
 
 
-def process_sample_counts(feature_table_filepath: str, output_filepath: str, min_count_filepath: str = None,
-                          tmp_dir: str = '.'):
+def process_sample_counts(feature_table_filepath: str, counts_filepath: str = None, min_count_filepath: str = None):
     """
     Load feature table, sum columns, and write output
 
     :param feature_table_filepath: path to the input FeatureTable (QZA, BIOM, or TSV format)
-    :param output_filepath: path to the output TSV file with sample count data (or - = stdout)
-    :param min_count_filepath: path to the output TXT file where just the min count info is stored
-    :param tmp_dir: temporary directory for loading QZA data (a random subfolder will be temporarily created)
+    :param counts_filepath: path to an output TSV file with sample count data (or - = stdout)
+    :param min_count_filepath: path to an output TXT file where just the min count info is stored (or - = stdout)
     :return: writes output files to output_filepath and optionally min_count_filepath
     """
-    feature_data = load_feature_table(feature_table_filepath, tmp_dir=tmp_dir)\
+    feature_data = load_feature_table(feature_table_filepath)\
         .set_index('Feature ID')
 
     # Sum columns
@@ -68,21 +73,28 @@ def process_sample_counts(feature_table_filepath: str, output_filepath: str, min
     # Sort by count
     sample_counts = sample_counts.sort_values(by=['count'], ascending=False)
 
-    # Write output
-    if output_filepath == '-':
-        # Write to STDOUT
-        logger.info('Writing counts summary file to STDOUT')
-        sample_counts.to_csv(sys.stdout, sep='\t', index=False)
-    else:
-        logger.info(f'Writing counts summary file to {output_filepath}')
-        sample_counts.to_csv(output_filepath, sep='\t', index=False)
+    if counts_filepath:
+        # Write counts-per-sample
+        if counts_filepath == '-':
+            # Write to STDOUT
+            logger.info('Writing counts-per-sample to STDOUT')
+            sample_counts.to_csv(sys.stdout, sep='\t', index=False)
+        else:
+            logger.info(f'Writing counts-per-sample as file: {counts_filepath}')
+            sample_counts.to_csv(counts_filepath, sep='\t', index=False)
 
-    # Get min count and write, if desired
     if min_count_filepath:
-        logger.info(f'Writing min count to {min_count_filepath}')
+        # Write minimum read count per sample
         min_count = int(min(sample_counts['count']))
-        with open(min_count_filepath, 'w') as min_count_file:
-            min_count_file.write(f'{str(min_count)}\n')
+
+        if min_count_filepath == '-':
+            # Write to STDOUT
+            logger.info('Writing minimum count per sample to STDOUT')
+            sys.stdout.write(f'{min_count}\n')
+        else:
+            logger.info(f'Writing minimum count per sample as file: {min_count_filepath}')
+            with open(min_count_filepath, 'w') as output_handle:
+                output_handle.write(f'{min_count}\n')
 
 
 def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
@@ -106,18 +118,14 @@ def subparse_cli(subparsers, parent_parser: argparse.ArgumentParser = None):
     subparser.set_defaults(count=True)
 
     file_settings = subparser.add_argument_group('Input/output file options')
-    workflow_settings = subparser.add_argument_group('Workflow options')
 
     file_settings.add_argument('-i', '--input_filepath', metavar='TABLE', required=True,
                                help='The path to the input FeatureTable file, either QZA, BIOM, or TSV.')
-    file_settings.add_argument('-o', '--output_filepath', metavar='TABLE', required=False, default='-',
-                               help='The path to the output TSV file. Will write to STDOUT (-) if nothing is provided.')
-    file_settings.add_argument('-m', '--min_count_filepath', metavar='TXT', required=False, default=None,
+    file_settings.add_argument('-c', '--output_counts_filepath', metavar='TABLE', required=False, default=None,
+                               help='Optional path to write output counts per sample in TSV format. Provide "-" to '
+                                    'write to stdout.')
+    file_settings.add_argument('-m', '--output_min_count_filepath', metavar='TXT', required=False, default=None,
                                help='Optional path to write a single-line text file with the lowest count value in the '
-                                    'dataset.')
-
-    workflow_settings.add_argument('-T', '--tmp_dir', metavar='DIR', required=False, default='.',
-                                   help='Optional path to the temporary directory used for unpacking the QZA. A random '
-                                        'subdirectory will be temporarily created here [default: .].')
+                                    'dataset. Provide "-" to write to stdout.')
 
     return subparser

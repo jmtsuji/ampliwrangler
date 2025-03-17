@@ -95,7 +95,7 @@ test_ID="01_standard"
 echo "[ $(date -u) ]: Running script on test data '${test_ID}'"
 ampliwrangler count \
   -i "${input_dir}/feature-table.qza" \
-  -o "${output_dir}/sample-counts.tsv" \
+  -c "${output_dir}/sample-counts.tsv" \
   -m "${output_dir}/min-sample-count.txt" \
   -v \
   > "${output_dir}/${test_ID}.log" 2>&1
