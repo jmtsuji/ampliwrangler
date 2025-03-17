@@ -76,7 +76,7 @@ ampliwrangler tabulate \
   -o "feature-table-with-metadata.tsv" \
   --parse_taxonomy
 ```
-The tabuilate module is quite feature rich. Other functions, including normalization of feature table data, renaming
+The tabulate module is quite feature rich. Other functions, including normalization of feature table data, renaming
 ASVs, sorting by taxonomy, and so on are detailed in the help statement in Appendix 2 below.
 
 ### ampliwrangler count
@@ -138,7 +138,7 @@ ampliwrangler
 ```commandline
 usage: ampliwrangler [-h] [-V] {tabulate,count,split} ...
 
-Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.1.3
+Ampliwrangler: simple command-line utilities for enhancing QIIME2-based amplicon analyses. Copyright Jackson M. Tsuji, 2025. Version: 0.2.0
 
 positional arguments:
   {tabulate,count,split}
